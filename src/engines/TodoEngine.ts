@@ -11,6 +11,8 @@ export interface TodoItem {
     pinned: boolean;
     indentLevel: number;      // Indentation level (0 = root)
     parentId: string | null;  // Parent todo ID (null = no parent)
+    dueDate: string | null;   // Due date in YYYY-MM-DD format
+    tags: string[];           // Tags extracted from task text
 }
 
 export interface TodoEngineSettings {
@@ -173,6 +175,14 @@ export class TodoEngine {
                 const lastItem = parentStack[parentStack.length - 1];
                 const parentId = lastItem ? lastItem.id : null;
 
+                // Extract due date (📅YYYY-MM-DD or due::YYYY-MM-DD or 📆YYYY-MM-DD)
+                const dueDateMatch = text.match(/(?:📅|📆|due::?)(\d{4}-\d{2}-\d{2})/);
+                const dueDate = dueDateMatch ? dueDateMatch[1] ?? null : null;
+
+                // Extract tags (#tag format)
+                const tagMatches = text.match(/#[\w\-\/]+/g);
+                const tags = tagMatches ? tagMatches : [];
+
                 const todo: TodoItem = {
                     id,
                     text,
@@ -184,6 +194,8 @@ export class TodoEngine {
                     pinned: this.isPinned(id),
                     indentLevel,
                     parentId,
+                    dueDate,
+                    tags,
                 };
 
                 this.todos.set(id, todo);
@@ -202,10 +214,9 @@ export class TodoEngine {
         }
     }
 
-    private generateId(filePath: string, lineNumber: number, text: string): string {
-        // Create a stable ID based on file path and text content
-        const hash = this.hashString(`${filePath}:${text}`);
-        return `${hash}-${lineNumber}`;
+    private generateId(filePath: string, lineNumber: number, _text: string): string {
+        // Use only file path and line number for stable ID (column assignments survive text edits)
+        return `${filePath}:${lineNumber}`;
     }
 
     private hashString(str: string): string {

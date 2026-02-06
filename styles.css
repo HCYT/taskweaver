@@ -529,6 +529,101 @@
   color: var(--text-accent);
 }
 
+/* Card header and footer */
+.taskweaver-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.taskweaver-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Date badges */
+.taskweaver-card-date {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.taskweaver-card-date.is-overdue {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.taskweaver-card-date.is-today {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.taskweaver-card-date.is-soon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+/* Tag pills */
+.taskweaver-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.taskweaver-card-tag {
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  opacity: 0.85;
+}
+
+.taskweaver-card-tag-more {
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+/* Mini progress bar */
+.taskweaver-card-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.taskweaver-progress-bar {
+  display: inline-block;
+  width: 40px;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.taskweaver-progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
 /* Priority colors */
 .taskweaver-board-card.priority-high {
   border-left: 4px solid #ef4444;
@@ -630,31 +725,37 @@
 .taskweaver-edit-modal {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-  /* max-width is handled by obsidian modal usually, but we can set it if we want to override */
+  gap: 20px;
+  padding: 28px;
+  min-width: 500px;
 }
 
 .taskweaver-modal-header {
   border-bottom: 1px solid var(--background-modifier-border);
-  padding-bottom: 12px;
+  padding-bottom: 16px;
   margin-bottom: 4px;
 }
 
 .taskweaver-modal-header h2 {
   margin: 0;
-  font-size: 1.25em;
+  font-size: 1.4em;
   font-weight: 600;
+}
+
+.taskweaver-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .taskweaver-field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .taskweaver-field-group label {
-  font-size: 0.85em;
+  font-size: 0.8em;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -663,13 +764,14 @@
 
 .taskweaver-task-textarea {
   width: 100%;
+  min-height: 100px;
   resize: vertical;
-  padding: 10px;
+  padding: 12px;
   font-size: 1em;
   line-height: 1.5;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .taskweaver-task-textarea:focus {
@@ -677,25 +779,59 @@
   box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
+/* TWO COLUMN GRID for metadata */
 .taskweaver-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: end;
+  gap: 20px;
+  align-items: start;
+}
+
+.taskweaver-date-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.taskweaver-date-display {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.taskweaver-date-display.has-date {
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+.taskweaver-date-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.taskweaver-date-btn:hover {
+  background: var(--background-modifier-hover);
 }
 
 .taskweaver-input {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 .taskweaver-modal-info {
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--text-faint);
-  text-align: right;
-  margin-top: -8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
 .taskweaver-monospace {
@@ -724,4 +860,348 @@
   font-size: 0.85em;
   margin-right: 6px;
   border: 1px solid transparent;
+}
+
+/* ========================
+   DATE PICKER MODAL
+   ======================== */
+
+.taskweaver-date-picker {
+  max-width: 520px;
+}
+
+.taskweaver-dp-header h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.taskweaver-dp-main {
+  display: flex;
+  gap: 20px;
+  min-height: 280px;
+}
+
+.taskweaver-dp-quick {
+  flex: 0 0 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taskweaver-dp-quick-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--background-secondary);
+}
+
+.taskweaver-dp-quick-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.taskweaver-dp-quick-item.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.taskweaver-dp-quick-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.taskweaver-dp-quick-date {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.taskweaver-dp-calendar {
+  flex: 1;
+}
+
+.taskweaver-dp-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.taskweaver-dp-nav-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.taskweaver-dp-nav-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.taskweaver-dp-month-year {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.taskweaver-dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.taskweaver-dp-day-header {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px;
+}
+
+.taskweaver-dp-day {
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.taskweaver-dp-day:hover {
+  background: var(--background-modifier-hover);
+}
+
+.taskweaver-dp-day.other-month {
+  color: var(--text-faint);
+}
+
+.taskweaver-dp-day.is-today {
+  font-weight: 700;
+  color: var(--interactive-accent);
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+
+.taskweaver-dp-day.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.taskweaver-dp-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.taskweaver-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.taskweaver-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.taskweaver-btn-secondary {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.taskweaver-btn-secondary:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Date display in EditTaskModal */
+.taskweaver-date-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.taskweaver-date-display {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.taskweaver-date-display.has-date {
+  color: var(--text-normal);
+}
+
+.taskweaver-date-btn {
+  background: var(--interactive-accent);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ========================
+   FILTER POPOVER
+   ======================== */
+
+.taskweaver-filter-wrap {
+  flex-shrink: 0;
+}
+
+.taskweaver-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.taskweaver-filter-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.taskweaver-filter-btn.has-active-filters {
+  color: var(--interactive-accent);
+}
+
+.taskweaver-filter-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 9px;
+  font-weight: 600;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.taskweaver-filter-popover {
+  position: fixed;
+  z-index: 1000;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  min-width: 240px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.taskweaver-fp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.taskweaver-fp-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.taskweaver-fp-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.taskweaver-fp-clear:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.taskweaver-fp-section {
+  margin-bottom: 12px;
+}
+
+.taskweaver-fp-section>label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.taskweaver-fp-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.taskweaver-fp-toggle-row input[type="checkbox"] {
+  margin: 0;
+}
+
+.taskweaver-fp-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+/* Status row in edit modal */
+.taskweaver-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.taskweaver-status-row input[type="checkbox"] {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.taskweaver-status-text {
+  font-size: 13px;
+  color: var(--text-normal);
 }

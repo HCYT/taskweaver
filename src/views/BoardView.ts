@@ -2,6 +2,9 @@ import { ItemView, WorkspaceLeaf, Menu, TFile, Modal, App, Setting } from 'obsid
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
 import { BoardEngine, Board, Column } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
+import { FilterPopover } from '../components/FilterPopover';
+import { FilterState, DEFAULT_FILTER_STATE } from '../utils/FilterState';
+import { filterTodos } from '../utils/TodoFilterer';
 
 export const VIEW_TYPE_BOARD = 'taskweaver-board-view';
 
@@ -14,6 +17,10 @@ export class BoardView extends ItemView {
     private draggedTodoId: string | null = null;
     private draggedColumnId: string | null = null;
     private searchFilter: string = '';
+    private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    private isComposing: boolean = false;
+    private filterState: FilterState = { ...DEFAULT_FILTER_STATE };
+    private filterPopover: FilterPopover | null = null;
 
     constructor(
         leaf: WorkspaceLeaf,
@@ -53,6 +60,24 @@ export class BoardView extends ItemView {
         this.boardEngine.onUpdate(() => this.render());
     }
 
+    private triggerDebouncedSearch(searchInput: HTMLInputElement): void {
+        if (this.searchDebounceTimer) {
+            clearTimeout(this.searchDebounceTimer);
+        }
+        this.searchDebounceTimer = setTimeout(() => {
+            const cursorPos = searchInput.selectionStart;
+            this.render();
+            // Restore focus after render
+            const newInput = this.containerEl_.querySelector('.taskweaver-board-search') as HTMLInputElement;
+            if (newInput) {
+                newInput.focus();
+                if (cursorPos !== null) {
+                    newInput.setSelectionRange(cursorPos, cursorPos);
+                }
+            }
+        }, 300);
+    }
+
     private render(): void {
         this.containerEl_.empty();
 
@@ -68,8 +93,29 @@ export class BoardView extends ItemView {
             cls: 'taskweaver-board-search',
         });
         searchInput.value = this.searchFilter;
+
+        // Track IME composition state to avoid interrupting Chinese input
+        searchInput.addEventListener('compositionstart', () => {
+            this.isComposing = true;
+        });
+        searchInput.addEventListener('compositionend', () => {
+            this.isComposing = false;
+            // Trigger search after composition ends
+            this.triggerDebouncedSearch(searchInput);
+        });
+
         searchInput.addEventListener('input', () => {
             this.searchFilter = searchInput.value;
+            // Skip render if in IME composition mode
+            if (this.isComposing) return;
+            this.triggerDebouncedSearch(searchInput);
+        });
+
+        // Filter button
+        const filterWrap = header.createDiv({ cls: 'taskweaver-filter-wrap' });
+        const allTodos = this.todoEngine.getTodos();
+        this.filterPopover = new FilterPopover(filterWrap, allTodos, this.filterState, (newState) => {
+            this.filterState = newState;
             this.render();
         });
 
@@ -328,6 +374,8 @@ export class BoardView extends ItemView {
                 t.filePath.toLowerCase().includes(filter)
             );
         }
+        // Apply advanced filters
+        todos = filterTodos(todos, this.filterState);
         const todosEl = columnEl.createDiv({ cls: 'taskweaver-column-todos' });
 
         // Drop zone events - supports both internal and cross-view drop
@@ -383,30 +431,60 @@ export class BoardView extends ItemView {
             card.addClass('priority-low');
         }
 
+        // === CARD HEADER ===
+        const header = card.createDiv({ cls: 'taskweaver-card-header' });
+
         // Checkbox
-        const checkbox = card.createEl('input', { type: 'checkbox', cls: 'taskweaver-card-checkbox' });
+        const checkbox = header.createEl('input', { type: 'checkbox', cls: 'taskweaver-card-checkbox' });
         checkbox.checked = todo.completed;
         checkbox.addEventListener('change', async () => {
             await this.todoEngine.toggleTodo(todo.id);
         });
 
-        // Text
-        const text = card.createDiv({ cls: 'taskweaver-card-text' });
-        text.setText(todo.text);
+        // Text (strip date/tag syntax for cleaner display)
+        const cleanText = todo.text
+            .replace(/(?:📅|📆|due::?)\d{4}-\d{2}-\d{2}/g, '')
+            .replace(/#[\w\-\/]+/g, '')
+            .trim();
+        const textEl = header.createDiv({ cls: 'taskweaver-card-text' });
+        textEl.setText(cleanText || todo.text);
 
-        // File link
-        const link = card.createDiv({ cls: 'taskweaver-card-link' });
-        const fileName = todo.filePath.split('/').pop() || todo.filePath;
-        link.setText(fileName);
-        link.addEventListener('click', () => this.openFile(todo));
+        // === CARD FOOTER ===
+        const footer = card.createDiv({ cls: 'taskweaver-card-footer' });
+
+        // Due date badge
+        if (todo.dueDate) {
+            const dateStatus = this.getDateStatus(todo.dueDate);
+            const dateBadge = footer.createSpan({ cls: `taskweaver-card-date ${dateStatus}` });
+            dateBadge.setText(this.formatDate(todo.dueDate));
+        }
+
+        // Tags
+        if (todo.tags && todo.tags.length > 0) {
+            const tagsContainer = footer.createDiv({ cls: 'taskweaver-card-tags' });
+            for (const tag of todo.tags.slice(0, 3)) { // Max 3 tags
+                const tagEl = tagsContainer.createSpan({ cls: 'taskweaver-card-tag' });
+                tagEl.setText(tag);
+            }
+            if (todo.tags.length > 3) {
+                const moreEl = tagsContainer.createSpan({ cls: 'taskweaver-card-tag-more' });
+                moreEl.setText(`+${todo.tags.length - 3}`);
+            }
+        }
 
         // Sub-task progress indicator
         if (this.todoEngine.hasSubTasks(todo.id)) {
             const progress = this.todoEngine.getSubTaskProgress(todo.id);
-            const progressEl = card.createDiv({ cls: 'taskweaver-subtask-progress' });
-            progressEl.setText(`📋 ${progress.completed}/${progress.total}`);
-            progressEl.setAttribute('aria-label', `${progress.completed} of ${progress.total} subtasks completed`);
+            const progressEl = footer.createDiv({ cls: 'taskweaver-card-progress' });
+            const percent = Math.round((progress.completed / progress.total) * 100);
+            progressEl.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
         }
+
+        // File link
+        const link = footer.createDiv({ cls: 'taskweaver-card-link' });
+        const fileName = todo.filePath.split('/').pop() || todo.filePath;
+        link.setText(fileName);
+        link.addEventListener('click', () => this.openFile(todo));
 
         // Drag events
         card.addEventListener('dragstart', (e) => {
@@ -424,11 +502,48 @@ export class BoardView extends ItemView {
             this.draggedTodoId = null;
         });
 
+        // Double-click to edit
+        card.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            new EditTaskModal(this.app, this.todoEngine, todo, () => {
+                this.render();
+            }).open();
+        });
+
         // Context menu
         card.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             this.showCardContextMenu(e, board, todo);
         });
+    }
+
+    private getDateStatus(dateStr: string): string {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(dateStr);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) return 'is-overdue';
+        if (diffDays === 0) return 'is-today';
+        if (diffDays <= 3) return 'is-soon';
+        return '';
+    }
+
+    private formatDate(dateStr: string): string {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(dateStr);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return '📅 Today';
+        if (diffDays === 1) return '📅 Tomorrow';
+        if (diffDays === -1) return '📅 Yesterday';
+        if (diffDays < 0) return `📅 ${Math.abs(diffDays)}d ago`;
+        if (diffDays <= 7) return `📅 In ${diffDays}d`;
+        return `📅 ${dateStr.slice(5)}`; // MM-DD
     }
 
     private renderArchiveColumn(container: HTMLElement, board: Board, archivedTodos: TodoItem[]): void {

@@ -1,5 +1,6 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Notice } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
+import { DatePickerModal } from './DatePickerModal';
 
 export class EditTaskModal extends Modal {
     private todoEngine: TodoEngine;
@@ -72,22 +73,39 @@ export class EditTaskModal extends Modal {
         // Due Date
         const dateSection = metaGrid.createDiv('taskweaver-field-group');
         dateSection.createEl('label', { text: 'Due Date' });
-        const dateInput = dateSection.createEl('input', { type: 'date', cls: 'taskweaver-input' });
-        dateInput.value = this.dueDate;
-        dateInput.addEventListener('change', (e) => {
-            this.dueDate = (e.target as HTMLInputElement).value;
+        const dateWrapper = dateSection.createDiv({ cls: 'taskweaver-date-wrapper' });
+        const dateDisplay = dateWrapper.createSpan({ cls: 'taskweaver-date-display' });
+        dateDisplay.setText(this.dueDate || 'No date');
+        const dateBtn = dateWrapper.createEl('button', { text: '📅', cls: 'taskweaver-date-btn' });
+        dateBtn.addEventListener('click', () => {
+            new DatePickerModal(this.app, this.dueDate || null, (date) => {
+                this.dueDate = date || '';
+                dateDisplay.setText(this.dueDate || 'No date');
+                if (this.dueDate) {
+                    dateDisplay.addClass('has-date');
+                } else {
+                    dateDisplay.removeClass('has-date');
+                }
+            }).open();
         });
+        if (this.dueDate) {
+            dateDisplay.addClass('has-date');
+        }
 
         // Status
         const statusSection = metaGrid.createDiv('taskweaver-field-group');
         statusSection.createEl('label', { text: 'Status' });
-        const statusToggle = new Setting(statusSection)
-            .addToggle(toggle => {
-                toggle.setValue(this.completedState)
-                    .onChange((value) => {
-                        this.completedState = value;
-                    });
-            });
+        const statusRow = statusSection.createDiv({ cls: 'taskweaver-status-row' });
+        const statusCheckbox = statusRow.createEl('input', { type: 'checkbox' });
+        statusCheckbox.checked = this.completedState;
+        statusRow.createSpan({ text: this.completedState ? 'Completed' : 'Pending', cls: 'taskweaver-status-text' });
+        statusCheckbox.addEventListener('change', () => {
+            this.completedState = statusCheckbox.checked;
+            const statusText = statusRow.querySelector('.taskweaver-status-text');
+            if (statusText) {
+                statusText.textContent = this.completedState ? 'Completed' : 'Pending';
+            }
+        });
 
         // Tags Preview (Read-only for now or simple display)
         if (this.tags.length > 0) {
