@@ -1,7 +1,9 @@
 import { ItemView, WorkspaceLeaf, Menu, TFile, Modal, App, Setting } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
-import { BoardEngine, Board, Column } from '../engines/BoardEngine';
+import { BoardEngine, Board, Column, ColumnType, ColumnTypeConfig } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
+import { ColumnTypeModal } from '../modals/ColumnTypeModal';
+import { BoardSettingsModal } from '../modals/BoardSettingsModal';
 import { FilterPopover } from '../components/FilterPopover';
 import { FilterState, DEFAULT_FILTER_STATE } from '../utils/FilterState';
 import { filterTodos } from '../utils/TodoFilterer';
@@ -119,7 +121,20 @@ export class BoardView extends ItemView {
             this.render();
         });
 
+        // Settings button
+        const settingsBtn = header.createEl('button', { cls: 'taskweaver-settings-btn' });
+        settingsBtn.innerHTML = '⚙️';
+        settingsBtn.setAttribute('aria-label', 'Board Settings');
+
         const board = this.boardEngine.getActiveBoard();
+        if (board) {
+            settingsBtn.addEventListener('click', () => {
+                new BoardSettingsModal(this.app, board, this.boardEngine, () => {
+                    this.onSettingsChange();
+                }).open();
+            });
+        }
+
         if (!board) {
             this.containerEl_.createDiv({
                 text: 'No boards yet. Click + to create one.',
@@ -333,6 +348,25 @@ export class BoardView extends ItemView {
                     .onClick(() => this.promptSetWorkLimit(board.id, column));
             });
 
+            // Column type configuration
+            menu.addItem(item => {
+                const typeLabel = column.type ? `Type: ${this.getColumnTypeLabel(column.type)}` : 'Configure Type';
+                item.setTitle(typeLabel)
+                    .setIcon('settings-2')
+                    .onClick(() => {
+                        new ColumnTypeModal(
+                            this.app,
+                            column.name,
+                            column.type || 'manual',
+                            column.typeConfig,
+                            (type, config) => {
+                                this.boardEngine.setColumnType(board.id, column.id, type, config);
+                                this.onSettingsChange();
+                            }
+                        ).open();
+                    });
+            });
+
             // Sorting options sub-menu
             menu.addItem(item => {
                 item.setTitle('Sort by Priority')
@@ -408,6 +442,34 @@ export class BoardView extends ItemView {
         for (const todo of todos) {
             this.renderTodoCard(todosEl, board, todo);
         }
+
+        // Quick add task input (only for manual columns)
+        const columnType = column.type || 'manual';
+        if (columnType === 'manual') {
+            const quickAddContainer = columnEl.createDiv({ cls: 'taskweaver-quick-add' });
+            const quickAddInput = quickAddContainer.createEl('input', {
+                type: 'text',
+                placeholder: '+ Add task...',
+                cls: 'taskweaver-quick-add-input'
+            });
+
+            quickAddInput.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter' && quickAddInput.value.trim()) {
+                    const taskText = quickAddInput.value.trim();
+                    await this.quickAddTask(taskText, board.id, column.id);
+                    quickAddInput.value = '';
+                }
+            });
+
+            // Also add when input loses focus with content
+            quickAddInput.addEventListener('blur', async () => {
+                if (quickAddInput.value.trim()) {
+                    const taskText = quickAddInput.value.trim();
+                    await this.quickAddTask(taskText, board.id, column.id);
+                    quickAddInput.value = '';
+                }
+            });
+        }
     }
 
     private renderTodoCard(container: HTMLElement, board: Board, todo: TodoItem): void {
@@ -472,12 +534,41 @@ export class BoardView extends ItemView {
             }
         }
 
-        // Sub-task progress indicator
+        // Sub-task expandable section
         if (this.todoEngine.hasSubTasks(todo.id)) {
             const progress = this.todoEngine.getSubTaskProgress(todo.id);
-            const progressEl = footer.createDiv({ cls: 'taskweaver-card-progress' });
+            const subTasksSection = card.createDiv({ cls: 'taskweaver-subtasks-section' });
+
+            // Toggle header
+            const toggleHeader = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-toggle' });
+            const expandIcon = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-icon', text: '▶' });
+            const progressText = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-progress' });
             const percent = Math.round((progress.completed / progress.total) * 100);
-            progressEl.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+            progressText.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+
+            // Sub-task list (hidden by default)
+            const subTasksList = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-list is-collapsed' });
+            const subTasks = this.todoEngine.getSubTasks(todo.id);
+            for (const subTask of subTasks) {
+                const subItem = subTasksList.createDiv({ cls: 'taskweaver-subtask-item' });
+                const checkbox = subItem.createEl('input', { type: 'checkbox' });
+                checkbox.checked = subTask.completed;
+                checkbox.addEventListener('change', async () => {
+                    await this.todoEngine.toggleTodo(subTask.id);
+                    this.render();
+                });
+                subItem.createSpan({
+                    text: subTask.text.replace(/^[-*]\s*\[.\]\s*/, '').substring(0, 50),
+                    cls: subTask.completed ? 'is-completed' : ''
+                });
+            }
+
+            // Toggle click handler
+            toggleHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isCollapsed = subTasksList.classList.toggle('is-collapsed');
+                expandIcon.setText(isCollapsed ? '▶' : '▼');
+            });
         }
 
         // File link
@@ -516,6 +607,18 @@ export class BoardView extends ItemView {
             e.preventDefault();
             this.showCardContextMenu(e, board, todo);
         });
+    }
+
+    private getColumnTypeLabel(type: ColumnType): string {
+        switch (type) {
+            case 'manual': return '📝 Manual';
+            case 'completed': return '✅ Completed';
+            case 'undated': return '📭 No Date';
+            case 'overdue': return '🔴 Overdue';
+            case 'dated': return '📅 Dated';
+            case 'namedTag': return '🏷️ Tag';
+            default: return type;
+        }
     }
 
     private getDateStatus(dateStr: string): string {
@@ -704,6 +807,38 @@ export class BoardView extends ItemView {
         });
 
         menu.showAtMouseEvent(e);
+    }
+
+    private async quickAddTask(text: string, boardId: string, columnId: string): Promise<void> {
+        // Find or create a default tasks file
+        const defaultFilePath = 'Tasks.md';
+        let file = this.app.vault.getAbstractFileByPath(defaultFilePath);
+
+        if (!file) {
+            // Create the file if it doesn't exist
+            await this.app.vault.create(defaultFilePath, '# Tasks\n\n');
+            file = this.app.vault.getAbstractFileByPath(defaultFilePath);
+        }
+
+        if (file instanceof TFile) {
+            const content = await this.app.vault.read(file);
+            const newTask = `- [ ] ${text}`;
+            const newContent = content.trimEnd() + '\n' + newTask + '\n';
+            await this.app.vault.modify(file, newContent);
+
+            // Wait for file to be scanned, then assign to column
+            setTimeout(() => {
+                // Find the newly created todo
+                const todos = this.todoEngine.getTodos(false);
+                const newTodo = todos.find(t =>
+                    t.filePath === defaultFilePath && t.text.includes(text)
+                );
+                if (newTodo) {
+                    this.boardEngine.assignTodoToColumn(boardId, newTodo.id, columnId);
+                    this.onSettingsChange();
+                }
+            }, 300);
+        }
     }
 
     private async openFile(todo: TodoItem): Promise<void> {

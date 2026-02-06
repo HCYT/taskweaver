@@ -15,6 +15,15 @@ export interface ColumnFilter {
     tags: string[];            // Filter by tags (empty = all)
 }
 
+// Column types for auto-filtering
+export type ColumnType = 'manual' | 'completed' | 'dated' | 'undated' | 'overdue' | 'namedTag';
+
+export interface ColumnTypeConfig {
+    dateFrom?: number;   // For 'dated': days from today (e.g., 0 = today)
+    dateTo?: number;     // For 'dated': days to (e.g., 7 = next week)
+    tag?: string;        // For 'namedTag': the tag to filter by
+}
+
 export interface Column {
     id: string;
     name: string;
@@ -22,6 +31,8 @@ export interface Column {
     workLimit?: number;        // Max tasks warning threshold
     sortConfig?: ColumnSortConfig;  // Sorting configuration
     filterConfig?: ColumnFilter;    // Column-level filters
+    type?: ColumnType;              // Column type for auto-filtering (default: 'manual')
+    typeConfig?: ColumnTypeConfig;  // Config for the column type
 }
 
 export interface Board {
@@ -208,50 +219,99 @@ export class BoardEngine {
         const board = this.getBoard(boardId);
         if (!board) return [];
 
-        const allTodos = this.todoEngine.getTodos();
+        const allTodos = this.todoEngine.getTodos(false); // Include completed
         const defaultColumnId = board.columns[0]?.id;
         const archivedIds = board.archivedTodoIds || [];
 
-        // Get column filter config
+        // Get column config
         const column = board.columns.find(c => c.id === columnId);
-        const filter = column?.filterConfig;
+        if (!column) return [];
 
-        return allTodos.filter(todo => {
+        const columnType = column.type || 'manual';
+        const typeConfig = column.typeConfig || {};
+        const filter = column.filterConfig;
+
+        // Filter based on column type
+        let filteredTodos = allTodos.filter(todo => {
             // Exclude archived todos
             if (archivedIds.includes(todo.id)) return false;
 
-            // Column assignment check
-            const assignedColumn = board.todoAssignments[todo.id] ?? defaultColumnId;
-            if (assignedColumn !== columnId) return false;
+            // Apply column type filtering
+            switch (columnType) {
+                case 'completed':
+                    return todo.completed;
 
-            // Apply column filters if configured
-            if (filter) {
-                // Completed/incomplete filter
+                case 'undated':
+                    return !todo.completed && !todo.dueDate;
+
+                case 'overdue':
+                    if (todo.completed || !todo.dueDate) return false;
+                    return this.isOverdue(todo.dueDate);
+
+                case 'dated':
+                    if (todo.completed || !todo.dueDate) return false;
+                    return this.isInDateRange(todo.dueDate, typeConfig.dateFrom ?? 0, typeConfig.dateTo ?? 7);
+
+                case 'namedTag':
+                    if (todo.completed) return false;
+                    if (!typeConfig.tag) return false;
+                    return todo.tags?.includes(typeConfig.tag) || todo.text.includes(typeConfig.tag);
+
+                case 'manual':
+                default:
+                    // Manual columns: exclude completed tasks, check manual assignment
+                    if (todo.completed) return false;
+                    const assignedColumn = board.todoAssignments[todo.id] ?? defaultColumnId;
+                    return assignedColumn === columnId;
+            }
+        });
+
+        // Apply additional column filters if configured
+        if (filter) {
+            filteredTodos = filteredTodos.filter(todo => {
                 if (!filter.showCompleted && todo.completed) return false;
                 if (!filter.showIncomplete && !todo.completed) return false;
 
-                // Priority filter (empty = all)
                 if (filter.priorities.length > 0) {
                     const todoPriority = board.todoPriorities[todo.id] || 0;
                     if (!filter.priorities.includes(todoPriority)) return false;
                 }
 
-                // Tag filter (empty = all)
                 if (filter.tags.length > 0) {
                     const hasTag = filter.tags.some(tag => todo.text.includes(tag));
                     if (!hasTag) return false;
                 }
-            }
+                return true;
+            });
+        }
 
-            return true;
-        }).sort((a, b) => {
-            // Board-specific pinned items on top
+        // Sort: pinned items on top
+        return filteredTodos.sort((a, b) => {
             const aPinned = board.pinnedIds.includes(a.id);
             const bPinned = board.pinnedIds.includes(b.id);
             if (aPinned && !bPinned) return -1;
             if (!aPinned && bPinned) return 1;
             return 0;
         });
+    }
+
+    // Helper: check if date is overdue
+    private isOverdue(dateStr: string): boolean {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(dateStr);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+    }
+
+    // Helper: check if date is in range (days from today)
+    private isInDateRange(dateStr: string, fromDays: number, toDays: number): boolean {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(dateStr);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays >= fromDays && diffDays <= toDays;
     }
 
     // Board-specific pinning
@@ -298,6 +358,18 @@ export class BoardEngine {
     }
 
     // Column settings
+    setColumnType(boardId: string, columnId: string, type: ColumnType, config?: ColumnTypeConfig): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        const column = board.columns.find(c => c.id === columnId);
+        if (column) {
+            column.type = type;
+            column.typeConfig = config;
+            this.notifyUpdate();
+        }
+    }
+
     toggleColumnMinimized(boardId: string, columnId: string): void {
         const board = this.getBoard(boardId);
         if (!board) return;

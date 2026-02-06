@@ -107,15 +107,53 @@ export class EditTaskModal extends Modal {
             }
         });
 
-        // Tags Preview (Read-only for now or simple display)
-        if (this.tags.length > 0) {
-            const tagSection = main.createDiv('taskweaver-field-group');
-            tagSection.createEl('label', { text: 'Tags' });
-            const tagContainer = tagSection.createDiv('taskweaver-tags-list');
-            this.tags.forEach(tag => {
-                tagContainer.createSpan({ text: tag, cls: 'taskweaver-tag' });
+        // Tags Section (Editable)
+        const tagSection = main.createDiv('taskweaver-field-group');
+        tagSection.createEl('label', { text: 'Tags' });
+        const tagContainer = tagSection.createDiv('taskweaver-tags-edit');
+
+        // Render existing tags with remove button
+        const renderTags = () => {
+            tagContainer.empty();
+            const tagsDisplay = tagContainer.createDiv('taskweaver-tags-list');
+            this.tags.forEach((tag, index) => {
+                const tagEl = tagsDisplay.createDiv({ cls: 'taskweaver-tag-editable' });
+                tagEl.createSpan({ text: tag });
+                const removeBtn = tagEl.createSpan({ text: '×', cls: 'taskweaver-tag-remove' });
+                removeBtn.addEventListener('click', () => {
+                    this.tags.splice(index, 1);
+                    renderTags();
+                });
             });
-        }
+
+            // Add tag input
+            const addTagRow = tagContainer.createDiv('taskweaver-tag-add-row');
+            const tagInput = addTagRow.createEl('input', {
+                type: 'text',
+                placeholder: '#new-tag',
+                cls: 'taskweaver-tag-input'
+            });
+            const addBtn = addTagRow.createEl('button', { text: '+', cls: 'taskweaver-tag-add-btn' });
+
+            const addTag = () => {
+                let newTag = tagInput.value.trim();
+                if (!newTag) return;
+                if (!newTag.startsWith('#')) newTag = '#' + newTag;
+                if (!this.tags.includes(newTag)) {
+                    this.tags.push(newTag);
+                    renderTags();
+                }
+            };
+
+            addBtn.addEventListener('click', addTag);
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                }
+            });
+        };
+        renderTags();
 
         // Footer Info
         const footerInfo = contentEl.createDiv('taskweaver-modal-info');

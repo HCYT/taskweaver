@@ -1205,3 +1205,245 @@
   font-size: 13px;
   color: var(--text-normal);
 }
+
+/* Sub-task expandable section */
+.taskweaver-subtasks-section {
+  margin-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 8px;
+}
+
+.taskweaver-subtasks-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.taskweaver-subtasks-toggle:hover {
+  background: var(--background-modifier-hover);
+}
+
+.taskweaver-subtasks-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 12px;
+}
+
+.taskweaver-subtasks-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.taskweaver-subtasks-list {
+  margin-top: 6px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taskweaver-subtasks-list.is-collapsed {
+  display: none;
+}
+
+.taskweaver-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.taskweaver-subtask-item input[type="checkbox"] {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.taskweaver-subtask-item span.is-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Tag editing in modal */
+.taskweaver-tags-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.taskweaver-tag-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.taskweaver-tag-remove {
+  cursor: pointer;
+  opacity: 0.7;
+  font-weight: bold;
+}
+
+.taskweaver-tag-remove:hover {
+  opacity: 1;
+}
+
+.taskweaver-tag-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.taskweaver-tag-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  font-size: 13px;
+}
+
+.taskweaver-tag-add-btn {
+  padding: 6px 12px;
+  border: none;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.taskweaver-tag-add-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* Quick add task */
+.taskweaver-quick-add {
+  margin-top: auto;
+  padding: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.taskweaver-quick-add-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.taskweaver-quick-add-input:focus {
+  border-style: solid;
+  border-color: var(--interactive-accent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  outline: none;
+}
+
+.taskweaver-quick-add-input::placeholder {
+  color: var(--text-faint);
+}
+
+/* Settings button */
+.taskweaver-settings-btn {
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.7;
+  border-radius: 6px;
+}
+
+.taskweaver-settings-btn:hover {
+  opacity: 1;
+  background: var(--background-modifier-hover);
+}
+
+/* Board Settings Modal */
+.taskweaver-board-settings-modal {
+  padding: 20px;
+  min-width: 400px;
+}
+
+.taskweaver-board-settings-modal h2 {
+  margin-bottom: 16px;
+}
+
+.taskweaver-board-settings-modal h3 {
+  margin: 20px 0 12px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.taskweaver-columns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.taskweaver-column-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.taskweaver-column-drag {
+  cursor: grab;
+  color: var(--text-muted);
+}
+
+.taskweaver-column-name-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.taskweaver-column-name-input:hover,
+.taskweaver-column-name-input:focus {
+  border-color: var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.taskweaver-column-type-badge {
+  font-size: 14px;
+}
+
+.taskweaver-column-delete {
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-error);
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.5;
+}
+
+.taskweaver-column-delete:hover {
+  opacity: 1;
+}
+
+.taskweaver-add-column-btn {
+  margin-bottom: 16px;
+}
