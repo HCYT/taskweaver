@@ -113,10 +113,13 @@ export class TodoView extends ItemView {
         if (this.duplicateIds.has(todo.id)) {
             item.addClass('is-duplicate');
         }
+        if (todo.pinned) {
+            item.addClass('is-pinned');
+        }
 
         // Drag handle
         const handle = item.createDiv({ cls: 'taskweaver-drag-handle' });
-        handle.innerHTML = '⋮⋮';
+        handle.innerHTML = todo.pinned ? '📌' : '⋮⋮';
 
         // Checkbox
         const checkbox = item.createEl('input', { type: 'checkbox', cls: 'taskweaver-checkbox' });
@@ -256,6 +259,17 @@ export class TodoView extends ItemView {
             item.setTitle(todo.completed ? 'Mark incomplete' : 'Mark complete')
                 .setIcon(todo.completed ? 'square' : 'check-square')
                 .onClick(() => this.engine.toggleTodo(todo.id));
+        });
+
+        menu.addSeparator();
+
+        menu.addItem((item) => {
+            item.setTitle(todo.pinned ? 'Unpin' : 'Pin to top')
+                .setIcon('pin')
+                .onClick(() => {
+                    this.engine.togglePin(todo.id);
+                    this.onSettingsChange();
+                });
         });
 
         menu.showAtMouseEvent(e);

@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS: TaskweaverSettings = {
     priorityOrder: [],
     hideCompleted: true,
     excludeFolders: [],
+    pinnedIds: [],
 };
 
 export default class TaskweaverPlugin extends Plugin {

@@ -8,12 +8,14 @@ export interface TodoItem {
     completed: boolean;
     priority: number;
     rawLine: string;
+    pinned: boolean;
 }
 
 export interface TodoEngineSettings {
     priorityOrder: string[]; // list of todo IDs in order
     hideCompleted: boolean;  // hide completed todos from display
     excludeFolders: string[]; // folders to exclude from scanning
+    pinnedIds: string[]; // pinned todo IDs
 }
 
 export class TodoEngine {
@@ -114,6 +116,7 @@ export class TodoEngine {
                     completed,
                     priority: this.getPriority(id),
                     rawLine: line,
+                    pinned: this.isPinned(id),
                 };
 
                 this.todos.set(id, todo);
@@ -159,7 +162,12 @@ export class TodoEngine {
             todos = todos.filter(t => !t.completed);
         }
 
-        return todos.sort((a, b) => a.priority - b.priority);
+        // Pinned items always on top, then sort by priority
+        return todos.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return a.priority - b.priority;
+        });
     }
 
     getAllTodos(): TodoItem[] {
@@ -205,6 +213,29 @@ export class TodoEngine {
         for (const [id, todo] of this.todos) {
             todo.priority = this.getPriority(id);
         }
+    }
+
+    isPinned(todoId: string): boolean {
+        return (this.settings.pinnedIds || []).includes(todoId);
+    }
+
+    togglePin(todoId: string): void {
+        // Ensure pinnedIds exists
+        if (!this.settings.pinnedIds) {
+            this.settings.pinnedIds = [];
+        }
+        const index = this.settings.pinnedIds.indexOf(todoId);
+        if (index === -1) {
+            this.settings.pinnedIds.push(todoId);
+        } else {
+            this.settings.pinnedIds.splice(index, 1);
+        }
+        // Update the todo's pinned state
+        const todo = this.todos.get(todoId);
+        if (todo) {
+            todo.pinned = this.isPinned(todoId);
+        }
+        this.notifyUpdate();
     }
 
     async moveTodoToFile(todoId: string, targetFilePath: string): Promise<boolean> {
