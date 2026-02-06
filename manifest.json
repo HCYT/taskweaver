@@ -1,0 +1,9 @@
+{
+  "id": "taskweaver",
+  "name": "Taskweaver",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Unified TODO management: sidebar list, drag-and-drop reorder, duplicate detection, file linking, cross-file move, and search.",
+  "author": "cyh",
+  "isDesktopOnly": false
+}
