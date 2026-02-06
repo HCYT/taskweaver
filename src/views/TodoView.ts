@@ -329,12 +329,41 @@ export class TodoView extends ItemView {
             }
         }
 
-        // Sub-task progress indicator
+        // Sub-task expandable section (synced with BoardView)
         if (this.engine.hasSubTasks(todo.id)) {
             const progress = this.engine.getSubTaskProgress(todo.id);
-            const progressEl = meta.createSpan({ cls: 'taskweaver-subtask-progress' });
+            const subTasksSection = item.createDiv({ cls: 'taskweaver-subtasks-section' });
+
+            // Toggle header
+            const toggleHeader = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-toggle' });
+            const expandIcon = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-icon', text: '▶' });
+            const progressText = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-progress' });
             const percent = Math.round((progress.completed / progress.total) * 100);
-            progressEl.innerHTML = `<span class="taskweaver-progress-bar-mini"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+            progressText.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+
+            // Sub-task list (hidden by default)
+            const subTasksList = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-list is-collapsed' });
+            const subTasks = this.engine.getSubTasks(todo.id);
+            for (const subTask of subTasks) {
+                const subItem = subTasksList.createDiv({ cls: 'taskweaver-subtask-item' });
+                const checkbox = subItem.createEl('input', { type: 'checkbox' });
+                checkbox.checked = subTask.completed;
+                checkbox.addEventListener('change', async () => {
+                    await this.engine.toggleTodo(subTask.id);
+                    this.renderList();
+                });
+                subItem.createSpan({
+                    text: subTask.text.replace(/^[-*]\s*\[.\]\s*/, '').substring(0, 50),
+                    cls: subTask.completed ? 'is-completed' : ''
+                });
+            }
+
+            // Toggle click handler
+            toggleHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isCollapsed = subTasksList.classList.toggle('is-collapsed');
+                expandIcon.setText(isCollapsed ? '▶' : '▼');
+            });
         }
 
         // File link
