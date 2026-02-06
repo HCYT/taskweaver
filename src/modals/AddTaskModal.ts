@@ -19,7 +19,7 @@ export class AddTaskModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.addClass('taskweaver-add-task-modal');
-        contentEl.createEl('h2', { text: 'Add New Task' });
+        new Setting(contentEl).setName('Add new task').setHeading();
 
         // Task text input
         new Setting(contentEl)
@@ -55,9 +55,8 @@ export class AddTaskModal extends Modal {
                 }
 
                 dropdown.onChange(value => {
-                    this.targetFile = value
-                        ? this.app.vault.getAbstractFileByPath(value) as TFile
-                        : null;
+                    const abstractFile = value ? this.app.vault.getAbstractFileByPath(value) : null;
+                    this.targetFile = abstractFile instanceof TFile ? abstractFile : null;
                 });
             });
 
@@ -77,18 +76,18 @@ export class AddTaskModal extends Modal {
             .addDropdown(dropdown => {
                 dropdown
                     .addOption('0', 'None')
-                    .addOption('1', '🔴 High')
-                    .addOption('2', '🟡 Medium')
-                    .addOption('3', '🟢 Low')
+                    .addOption('1', 'High')
+                    .addOption('2', 'Medium')
+                    .addOption('3', 'Low')
                     .onChange(value => { this.priority = parseInt(value); });
             });
 
         // Buttons
         new Setting(contentEl)
             .addButton(btn => btn
-                .setButtonText('Add Task')
+                .setButtonText('Add task')
                 .setCta()
-                .onClick(() => this.submit()))
+                .onClick(() => { void this.submit(); }))
             .addButton(btn => btn
                 .setButtonText('Cancel')
                 .onClick(() => this.close()));

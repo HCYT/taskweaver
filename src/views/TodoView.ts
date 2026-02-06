@@ -43,40 +43,6 @@ export class TodoView extends ItemView {
         contentEl.empty();
         contentEl.addClass('taskweaver-container');
 
-        // FORCE INJECT STYLES for debugging/robustness
-        const styleId = 'taskweaver-injected-styles';
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
-            style.id = styleId;
-            style.textContent = `
-                .taskweaver-header {
-                    display: flex !important;
-                    gap: 8px !important;
-                    align-items: center !important;
-                }
-                .taskweaver-view-selector {
-                    margin-bottom: 0 !important;
-                    flex-shrink: 0;
-                    min-width: 120px;
-                }
-                .taskweaver-search {
-                    flex: 1 !important;
-                    width: auto !important;
-                }
-                .taskweaver-edit-modal {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }
-                .taskweaver-meta-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
         // Header with search and view mode
         const header = contentEl.createDiv({ cls: 'taskweaver-header' });
 
@@ -120,7 +86,7 @@ export class TodoView extends ItemView {
         const select = selectorWrap.createEl('select', { cls: 'taskweaver-view-select' });
 
         // List option
-        const listOption = select.createEl('option', { text: 'List View', value: 'list' });
+        const listOption = select.createEl('option', { text: 'List view', value: 'list' });
         if (this.viewMode === 'list') listOption.selected = true;
 
         // Board options
@@ -339,7 +305,10 @@ export class TodoView extends ItemView {
             const expandIcon = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-icon', text: '▶' });
             const progressText = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-progress' });
             const percent = Math.round((progress.completed / progress.total) * 100);
-            progressText.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+            const progressBar = progressText.createSpan({ cls: 'taskweaver-progress-bar' });
+            const progressFill = progressBar.createSpan();
+            progressFill.style.width = `${percent}%`;
+            progressText.createSpan({ text: ` ${progress.completed}/${progress.total}` });
 
             // Sub-task list (hidden by default)
             const subTasksList = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-list is-collapsed' });
@@ -583,7 +552,7 @@ export class TodoView extends ItemView {
             // Priority options (synced with BoardView)
             const currentPriority = this.boardEngine.getTodoPriority(board.id, todo.id);
             menu.addItem((item) => {
-                item.setTitle('High Priority')
+                item.setTitle('High priority')
                     .setIcon(currentPriority === 1 ? 'check' : 'circle')
                     .onClick(() => {
                         this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 1 ? 0 : 1);
@@ -591,7 +560,7 @@ export class TodoView extends ItemView {
                     });
             });
             menu.addItem((item) => {
-                item.setTitle('Medium Priority')
+                item.setTitle('Medium priority')
                     .setIcon(currentPriority === 2 ? 'check' : 'circle')
                     .onClick(() => {
                         this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 2 ? 0 : 2);
@@ -599,7 +568,7 @@ export class TodoView extends ItemView {
                     });
             });
             menu.addItem((item) => {
-                item.setTitle('Low Priority')
+                item.setTitle('Low priority')
                     .setIcon(currentPriority === 3 ? 'check' : 'circle')
                     .onClick(() => {
                         this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 3 ? 0 : 3);
@@ -634,7 +603,7 @@ export class TodoView extends ItemView {
             // Global priority options
             const currentPriority = this.engine.getGlobalPriority(todo.id);
             menu.addItem((item) => {
-                item.setTitle('High Priority')
+                item.setTitle('High priority')
                     .setIcon(currentPriority === 1 ? 'check' : 'circle')
                     .onClick(() => {
                         this.engine.setGlobalPriority(todo.id, currentPriority === 1 ? 0 : 1);
@@ -642,7 +611,7 @@ export class TodoView extends ItemView {
                     });
             });
             menu.addItem((item) => {
-                item.setTitle('Medium Priority')
+                item.setTitle('Medium priority')
                     .setIcon(currentPriority === 2 ? 'check' : 'circle')
                     .onClick(() => {
                         this.engine.setGlobalPriority(todo.id, currentPriority === 2 ? 0 : 2);
@@ -650,7 +619,7 @@ export class TodoView extends ItemView {
                     });
             });
             menu.addItem((item) => {
-                item.setTitle('Low Priority')
+                item.setTitle('Low priority')
                     .setIcon(currentPriority === 3 ? 'check' : 'circle')
                     .onClick(() => {
                         this.engine.setGlobalPriority(todo.id, currentPriority === 3 ? 0 : 3);
@@ -684,11 +653,12 @@ export class TodoView extends ItemView {
         for (const file of files.slice(0, 20)) {
             menu.addItem((item) => {
                 item.setTitle(file.path)
-                    .onClick(async () => {
-                        const success = await this.engine.moveTodoToFile(todo.id, file.path);
-                        if (success) {
-                            this.renderList();
-                        }
+                    .onClick(() => {
+                        void this.engine.moveTodoToFile(todo.id, file.path).then((success) => {
+                            if (success) {
+                                this.renderList();
+                            }
+                        });
                     });
             });
         }

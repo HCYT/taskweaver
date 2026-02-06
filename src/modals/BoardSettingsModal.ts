@@ -24,7 +24,7 @@ export class BoardSettingsModal extends Modal {
 
         // Board name
         new Setting(contentEl)
-            .setName('Board Name')
+            .setName('Board name')
             .addText(text => {
                 text.setValue(this.board.name)
                     .onChange(value => {
@@ -53,7 +53,7 @@ export class BoardSettingsModal extends Modal {
         contentEl.createEl('h3', { text: 'Options' });
 
         new Setting(contentEl)
-            .setName('Hide Empty Columns')
+            .setName('Hide empty columns')
             .setDesc('Automatically hide columns with no tasks')
             .addToggle(toggle => {
                 toggle.setValue(this.board.hideEmptyColumns || false)

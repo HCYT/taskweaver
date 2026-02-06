@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, Setting } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
 import { DatePickerModal } from './DatePickerModal';
 
@@ -51,7 +51,7 @@ export class EditTaskModal extends Modal {
 
         // Header
         const header = contentEl.createDiv('taskweaver-modal-header');
-        header.createEl('h2', { text: 'Edit Task' });
+        new Setting(header).setName('Edit task').setHeading();
 
         // Main Content Area
         const main = contentEl.createDiv('taskweaver-modal-body');
@@ -72,7 +72,7 @@ export class EditTaskModal extends Modal {
 
         // Due Date
         const dateSection = metaGrid.createDiv('taskweaver-field-group');
-        dateSection.createEl('label', { text: 'Due Date' });
+        dateSection.createEl('label', { text: 'Due date' });
         const dateWrapper = dateSection.createDiv({ cls: 'taskweaver-date-wrapper' });
         const dateDisplay = dateWrapper.createSpan({ cls: 'taskweaver-date-display' });
         dateDisplay.setText(this.dueDate || 'No date');

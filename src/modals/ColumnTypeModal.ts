@@ -32,7 +32,7 @@ export class ColumnTypeModal extends Modal {
 
         // Type selector
         new Setting(contentEl)
-            .setName('Column Type')
+            .setName('Column type')
             .setDesc('How tasks are assigned to this column')
             .addDropdown(dropdown => {
                 dropdown
@@ -76,7 +76,7 @@ export class ColumnTypeModal extends Modal {
         switch (this.currentType) {
             case 'dated':
                 new Setting(configEl)
-                    .setName('Date Range')
+                    .setName('Date range')
                     .setDesc('Days from today')
                     .addText(text => {
                         text.setPlaceholder('From (e.g., 0)')

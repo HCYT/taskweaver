@@ -59,20 +59,20 @@ export default class TaskweaverPlugin extends Plugin {
 
         // Add commands
         this.addCommand({
-            id: 'open-taskweaver-view',
-            name: 'Open Taskweaver sidebar',
+            id: 'open-sidebar',
+            name: 'Open sidebar',
             callback: () => this.activateSidebarView(VIEW_TYPE_TODO),
         });
 
         this.addCommand({
-            id: 'open-taskweaver-board',
-            name: 'Open Kanban board',
+            id: 'open-board',
+            name: 'Open kanban board',
             callback: () => this.activateMainView(VIEW_TYPE_BOARD),
         });
 
         this.addCommand({
-            id: 'refresh-taskweaver',
-            name: 'Refresh Taskweaver list',
+            id: 'refresh-list',
+            name: 'Refresh task list',
             callback: async () => {
                 await this.engine.initialize();
             },
@@ -185,7 +185,7 @@ class TaskweaverSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'All Todo Settings' });
+        new Setting(containerEl).setName('TaskWeaver settings').setHeading();
 
         // Hide completed toggle
         new Setting(containerEl)
@@ -221,8 +221,8 @@ class TaskweaverSettingTab extends PluginSettingTab {
             .setDesc('Manually rescan all files for todos.')
             .addButton(button => button
                 .setButtonText('Rescan')
-                .onClick(async () => {
-                    await this.plugin.engine.initialize();
+                .onClick(() => {
+                    void this.plugin.engine.initialize();
                 }));
     }
 }

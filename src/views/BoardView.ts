@@ -318,7 +318,7 @@ export class BoardView extends ItemView {
             });
             menu.addSeparator();
             menu.addItem(item => {
-                item.setTitle('Move Left')
+                item.setTitle('Move left')
                     .setIcon('arrow-left')
                     .onClick(() => {
                         this.boardEngine.moveColumn(board.id, column.id, 'left');
@@ -326,7 +326,7 @@ export class BoardView extends ItemView {
                     });
             });
             menu.addItem(item => {
-                item.setTitle('Move Right')
+                item.setTitle('Move right')
                     .setIcon('arrow-right')
                     .onClick(() => {
                         this.boardEngine.moveColumn(board.id, column.id, 'right');
@@ -347,7 +347,7 @@ export class BoardView extends ItemView {
 
             // Work limit setting
             menu.addItem(item => {
-                item.setTitle('Set Work Limit')
+                item.setTitle('Set work limit')
                     .setIcon('gauge')
                     .onClick(() => this.promptSetWorkLimit(board.id, column));
             });
@@ -373,7 +373,7 @@ export class BoardView extends ItemView {
 
             // Sorting options sub-menu
             menu.addItem(item => {
-                item.setTitle('Sort by Priority')
+                item.setTitle('Sort by priority')
                     .setIcon('arrow-up-down')
                     .onClick(() => {
                         this.boardEngine.setColumnSortConfig(board.id, column.id,
@@ -382,7 +382,7 @@ export class BoardView extends ItemView {
                     });
             });
             menu.addItem(item => {
-                item.setTitle('Sort by Name')
+                item.setTitle('Sort by name')
                     .setIcon('sort-asc')
                     .onClick(() => {
                         this.boardEngine.setColumnSortConfig(board.id, column.id,
@@ -548,7 +548,10 @@ export class BoardView extends ItemView {
             const expandIcon = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-icon', text: '▶' });
             const progressText = toggleHeader.createSpan({ cls: 'taskweaver-subtasks-progress' });
             const percent = Math.round((progress.completed / progress.total) * 100);
-            progressText.innerHTML = `<span class="taskweaver-progress-bar"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+            const progressBar = progressText.createSpan({ cls: 'taskweaver-progress-bar' });
+            const progressFill = progressBar.createSpan();
+            progressFill.style.width = `${percent}%`;
+            progressText.createSpan({ text: ` ${progress.completed}/${progress.total}` });
 
             // Sub-task list (hidden by default)
             const subTasksList = subTasksSection.createDiv({ cls: 'taskweaver-subtasks-list is-collapsed' });
@@ -749,7 +752,7 @@ export class BoardView extends ItemView {
         // Priority options
         const currentPriority = this.boardEngine.getTodoPriority(board.id, todo.id);
         menu.addItem(item => {
-            item.setTitle('High Priority')
+            item.setTitle('High priority')
                 .setIcon(currentPriority === 1 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 1 ? 0 : 1);
@@ -757,7 +760,7 @@ export class BoardView extends ItemView {
                 });
         });
         menu.addItem(item => {
-            item.setTitle('Medium Priority')
+            item.setTitle('Medium priority')
                 .setIcon(currentPriority === 2 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 2 ? 0 : 2);
@@ -765,7 +768,7 @@ export class BoardView extends ItemView {
                 });
         });
         menu.addItem(item => {
-            item.setTitle('Low Priority')
+            item.setTitle('Low priority')
                 .setIcon(currentPriority === 3 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 3 ? 0 : 3);
@@ -798,11 +801,12 @@ export class BoardView extends ItemView {
         for (const file of files.slice(0, 20)) {
             menu.addItem((item) => {
                 item.setTitle(file.path)
-                    .onClick(async () => {
-                        const success = await this.todoEngine.moveTodoToFile(todo.id, file.path);
-                        if (success) {
-                            this.onSettingsChange();
-                        }
+                    .onClick(() => {
+                        void this.todoEngine.moveTodoToFile(todo.id, file.path).then((success) => {
+                            if (success) {
+                                this.onSettingsChange();
+                            }
+                        });
                     });
             });
         }

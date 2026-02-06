@@ -83,7 +83,7 @@ export class FilterPopover {
         // Header
         const header = this.popoverEl.createDiv({ cls: 'taskweaver-fp-header' });
         header.createEl('h4', { text: 'Filters' });
-        const clearBtn = header.createEl('button', { text: 'Clear All', cls: 'taskweaver-fp-clear' });
+        const clearBtn = header.createEl('button', { text: 'Clear all', cls: 'taskweaver-fp-clear' });
         clearBtn.addEventListener('click', () => {
             this.state = { ...DEFAULT_FILTER_STATE };
             this.renderPopoverContent();
@@ -100,7 +100,7 @@ export class FilterPopover {
 
         // Date Section
         const dateSection = this.popoverEl.createDiv({ cls: 'taskweaver-fp-section' });
-        dateSection.createEl('label', { text: 'Due Date' });
+        dateSection.createEl('label', { text: 'Due date' });
         this.createToggle(dateSection, 'Overdue', this.state.showOverdue, (v) => {
             this.state.showOverdue = v;
             this.onChange(this.state);
@@ -146,7 +146,7 @@ export class FilterPopover {
             const tagSection = this.popoverEl.createDiv({ cls: 'taskweaver-fp-section' });
             tagSection.createEl('label', { text: 'Tag' });
             const tagSelect = tagSection.createEl('select', { cls: 'taskweaver-fp-select' });
-            tagSelect.createEl('option', { value: '', text: 'All Tags' });
+            tagSelect.createEl('option', { value: '', text: 'All tags' });
             tags.forEach(tag => {
                 const optEl = tagSelect.createEl('option', { value: tag, text: tag });
                 if (tag === this.state.tagFilter) {
