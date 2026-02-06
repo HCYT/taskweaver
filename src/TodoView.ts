@@ -263,8 +263,17 @@ export class TodoView extends ItemView {
             badge.setAttribute('title', 'This todo appears in multiple files');
         }
 
-        // Drag events
-        item.addEventListener('dragstart', (e) => this.onDragStart(e, item, todo.id));
+        // Drag events - set on item level
+        item.addEventListener('dragstart', (e: DragEvent) => {
+            e.stopPropagation();
+            this.draggedItem = item;
+            this.draggedTodoId = todo.id;
+            item.addClass('is-dragging');
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', todo.id);
+            }
+        });
         item.addEventListener('dragend', () => this.onDragEnd());
         item.addEventListener('dragover', (e) => this.onDragOver(e, item));
         item.addEventListener('drop', (e) => this.onDrop(e, item));
@@ -322,10 +331,12 @@ export class TodoView extends ItemView {
 
     private onDrop(e: DragEvent, targetItem: HTMLElement): void {
         e.preventDefault();
+        e.stopPropagation();
+
         if (!this.draggedItem || targetItem === this.draggedItem) return;
 
-        // Reorder in flat list mode
         if (this.viewMode === 'list') {
+            // Reorder in flat list mode
             const items = Array.from(this.listEl.querySelectorAll('.taskweaver-item'));
             const draggedIndex = items.indexOf(this.draggedItem);
             const targetIndex = items.indexOf(targetItem);
@@ -342,6 +353,16 @@ export class TodoView extends ItemView {
 
             this.engine.updatePriorities(newOrder);
             this.onSettingsChange();
+        } else if (this.boardEngine && this.draggedTodoId) {
+            // Board mode: the parent is the group-todos container
+            const parent = targetItem.parentElement;
+            if (parent) {
+                const columnId = parent.getAttribute('data-column-id');
+                if (columnId) {
+                    this.boardEngine.assignTodoToColumn(this.viewMode, this.draggedTodoId, columnId);
+                    this.onSettingsChange();
+                }
+            }
         }
 
         targetItem.removeClass('drag-over');

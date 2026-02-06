@@ -229,7 +229,7 @@ export class BoardView extends ItemView {
         const todos = this.boardEngine.getTodosForColumn(board.id, column.id);
         const todosEl = columnEl.createDiv({ cls: 'taskweaver-column-todos' });
 
-        // Drop zone events
+        // Drop zone events - supports both internal and cross-view drop
         todosEl.addEventListener('dragover', (e) => {
             e.preventDefault();
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -241,8 +241,15 @@ export class BoardView extends ItemView {
         todosEl.addEventListener('drop', (e) => {
             e.preventDefault();
             todosEl.removeClass('drag-over');
-            if (this.draggedTodoId) {
-                this.boardEngine.assignTodoToColumn(board.id, this.draggedTodoId, column.id);
+
+            // Try to get todo ID from dataTransfer (cross-view) or internal state
+            let todoId = this.draggedTodoId;
+            if (!todoId && e.dataTransfer) {
+                todoId = e.dataTransfer.getData('text/plain');
+            }
+
+            if (todoId) {
+                this.boardEngine.assignTodoToColumn(board.id, todoId, column.id);
                 this.onSettingsChange();
             }
         });
