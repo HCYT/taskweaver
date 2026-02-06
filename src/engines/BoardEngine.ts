@@ -1,8 +1,27 @@
 import { TodoItem, TodoEngine } from './TodoEngine';
 
+export type SortCriteria = 'priority' | 'date' | 'name' | 'manual';
+export type SortOrder = 'asc' | 'desc';
+
+export interface ColumnSortConfig {
+    criteria: SortCriteria;
+    order: SortOrder;
+}
+
+export interface ColumnFilter {
+    showCompleted: boolean;    // Show/hide completed tasks
+    showIncomplete: boolean;   // Show/hide incomplete tasks
+    priorities: number[];      // Filter by priorities (empty = all)
+    tags: string[];            // Filter by tags (empty = all)
+}
+
 export interface Column {
     id: string;
     name: string;
+    minimized?: boolean;       // Column is collapsed
+    workLimit?: number;        // Max tasks warning threshold
+    sortConfig?: ColumnSortConfig;  // Sorting configuration
+    filterConfig?: ColumnFilter;    // Column-level filters
 }
 
 export interface Board {
@@ -11,6 +30,9 @@ export interface Board {
     columns: Column[];
     pinnedIds: string[];
     todoAssignments: Record<string, string>; // todoId -> columnId
+    todoPriorities: Record<string, number>;   // todoId -> priority (1=high, 2=medium, 3=low)
+    archivedTodoIds: string[]; // archived todo IDs (hidden from board)
+    hideEmptyColumns?: boolean;  // Auto-hide columns with no tasks
 }
 
 export interface BoardSettings {
@@ -47,6 +69,8 @@ export class BoardEngine {
             columns: [...DEFAULT_COLUMNS],
             pinnedIds: [],
             todoAssignments: {},
+            todoPriorities: {},
+            archivedTodoIds: [],
         };
         this.settings.boards.push(board);
         if (!this.settings.activeBoardId) {
@@ -179,17 +203,47 @@ export class BoardEngine {
         return board.todoAssignments[todoId];
     }
 
-    // Get todos for a specific column
+    // Get todos for a specific column (excluding archived)
     getTodosForColumn(boardId: string, columnId: string): TodoItem[] {
         const board = this.getBoard(boardId);
         if (!board) return [];
 
         const allTodos = this.todoEngine.getTodos();
         const defaultColumnId = board.columns[0]?.id;
+        const archivedIds = board.archivedTodoIds || [];
+
+        // Get column filter config
+        const column = board.columns.find(c => c.id === columnId);
+        const filter = column?.filterConfig;
 
         return allTodos.filter(todo => {
+            // Exclude archived todos
+            if (archivedIds.includes(todo.id)) return false;
+
+            // Column assignment check
             const assignedColumn = board.todoAssignments[todo.id] ?? defaultColumnId;
-            return assignedColumn === columnId;
+            if (assignedColumn !== columnId) return false;
+
+            // Apply column filters if configured
+            if (filter) {
+                // Completed/incomplete filter
+                if (!filter.showCompleted && todo.completed) return false;
+                if (!filter.showIncomplete && !todo.completed) return false;
+
+                // Priority filter (empty = all)
+                if (filter.priorities.length > 0) {
+                    const todoPriority = board.todoPriorities[todo.id] || 0;
+                    if (!filter.priorities.includes(todoPriority)) return false;
+                }
+
+                // Tag filter (empty = all)
+                if (filter.tags.length > 0) {
+                    const hasTag = filter.tags.some(tag => todo.text.includes(tag));
+                    if (!hasTag) return false;
+                }
+            }
+
+            return true;
         }).sort((a, b) => {
             // Board-specific pinned items on top
             const aPinned = board.pinnedIds.includes(a.id);
@@ -218,6 +272,139 @@ export class BoardEngine {
         const board = this.getBoard(boardId);
         if (!board) return false;
         return board.pinnedIds.includes(todoId);
+    }
+
+    // Priority management (1=high, 2=medium, 3=low, 0=none)
+    getTodoPriority(boardId: string, todoId: string): number {
+        const board = this.getBoard(boardId);
+        if (!board || !board.todoPriorities) return 0;
+        return board.todoPriorities[todoId] || 0;
+    }
+
+    setTodoPriority(boardId: string, todoId: string, priority: number): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        if (!board.todoPriorities) {
+            board.todoPriorities = {};
+        }
+
+        if (priority === 0) {
+            delete board.todoPriorities[todoId];
+        } else {
+            board.todoPriorities[todoId] = priority;
+        }
+        this.notifyUpdate();
+    }
+
+    // Column settings
+    toggleColumnMinimized(boardId: string, columnId: string): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        const column = board.columns.find(c => c.id === columnId);
+        if (column) {
+            column.minimized = !column.minimized;
+            this.notifyUpdate();
+        }
+    }
+
+    setColumnWorkLimit(boardId: string, columnId: string, limit: number | undefined): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        const column = board.columns.find(c => c.id === columnId);
+        if (column) {
+            column.workLimit = limit;
+            this.notifyUpdate();
+        }
+    }
+
+    setColumnSortConfig(boardId: string, columnId: string, config: ColumnSortConfig | undefined): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        const column = board.columns.find(c => c.id === columnId);
+        if (column) {
+            column.sortConfig = config;
+            this.notifyUpdate();
+        }
+    }
+
+    toggleHideEmptyColumns(boardId: string): void {
+        const board = this.getBoard(boardId);
+        if (board) {
+            board.hideEmptyColumns = !board.hideEmptyColumns;
+            this.notifyUpdate();
+        }
+    }
+
+    setColumnFilter(boardId: string, columnId: string, config: ColumnFilter | undefined): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        const column = board.columns.find(c => c.id === columnId);
+        if (column) {
+            column.filterConfig = config;
+            this.notifyUpdate();
+        }
+    }
+
+    // Archive management
+    archiveTodo(boardId: string, todoId: string): void {
+        const board = this.getBoard(boardId);
+        if (!board) return;
+
+        if (!board.archivedTodoIds) {
+            board.archivedTodoIds = [];
+        }
+        if (!board.archivedTodoIds.includes(todoId)) {
+            board.archivedTodoIds.push(todoId);
+            this.notifyUpdate();
+        }
+    }
+
+    unarchiveTodo(boardId: string, todoId: string): void {
+        const board = this.getBoard(boardId);
+        if (!board || !board.archivedTodoIds) return;
+
+        const index = board.archivedTodoIds.indexOf(todoId);
+        if (index !== -1) {
+            board.archivedTodoIds.splice(index, 1);
+            this.notifyUpdate();
+        }
+    }
+
+    isArchived(boardId: string, todoId: string): boolean {
+        const board = this.getBoard(boardId);
+        return board?.archivedTodoIds?.includes(todoId) || false;
+    }
+
+    getArchivedTodos(boardId: string): TodoItem[] {
+        const board = this.getBoard(boardId);
+        if (!board || !board.archivedTodoIds) return [];
+
+        const allTodos = this.todoEngine.getTodos(false); // Get all including completed
+        return allTodos.filter(todo => board.archivedTodoIds.includes(todo.id));
+    }
+
+    archiveCompletedTodos(boardId: string): number {
+        const board = this.getBoard(boardId);
+        if (!board) return 0;
+
+        const completedTodos = this.todoEngine.getTodos(false).filter(t => t.completed);
+        let count = 0;
+
+        for (const todo of completedTodos) {
+            if (!board.archivedTodoIds?.includes(todo.id)) {
+                if (!board.archivedTodoIds) board.archivedTodoIds = [];
+                board.archivedTodoIds.push(todo.id);
+                count++;
+            }
+        }
+
+        if (count > 0) this.notifyUpdate();
+        return count;
     }
 
     // Callbacks

@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, TFile, Menu } from 'obsidian';
-import { TodoItem, TodoEngine } from './TodoEngine';
-import { BoardEngine, Board, Column } from './BoardEngine';
+import { TodoItem, TodoEngine } from '../engines/TodoEngine';
+import { BoardEngine, Board, Column } from '../engines/BoardEngine';
+import { EditTaskModal } from '../modals/EditTaskModal';
 
 export const VIEW_TYPE_TODO = 'taskweaver-view';
 
@@ -382,6 +383,17 @@ export class TodoView extends ItemView {
             item.setTitle('Move to file...')
                 .setIcon('file-input')
                 .onClick(() => this.showMoveDialog(todo));
+        });
+
+        menu.addItem((item) => {
+            item.setTitle('Edit task')
+                .setIcon('pencil')
+                .onClick(() => {
+                    new EditTaskModal(this.app, this.engine, todo, async () => {
+                        await this.engine.initialize();
+                        this.onSettingsChange();
+                    }).open();
+                });
         });
 
         menu.addSeparator();

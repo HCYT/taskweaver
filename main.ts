@@ -1,8 +1,9 @@
 import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
-import { TodoEngine, TodoEngineSettings } from './src/TodoEngine';
-import { TodoView, VIEW_TYPE_TODO } from './src/TodoView';
-import { BoardEngine, BoardSettings } from './src/BoardEngine';
-import { BoardView, VIEW_TYPE_BOARD } from './src/BoardView';
+import { TodoEngine, TodoEngineSettings } from './src/engines/TodoEngine';
+import { TodoView, VIEW_TYPE_TODO } from './src/views/TodoView';
+import { BoardEngine, BoardSettings } from './src/engines/BoardEngine';
+import { BoardView, VIEW_TYPE_BOARD } from './src/views/BoardView';
+import { AddTaskModal } from './src/modals/AddTaskModal';
 
 interface TaskweaverSettings extends TodoEngineSettings {
     boardSettings: BoardSettings;
@@ -12,6 +13,8 @@ const DEFAULT_SETTINGS: TaskweaverSettings = {
     priorityOrder: [],
     hideCompleted: true,
     excludeFolders: [],
+    includeFolders: [],
+    tagFilters: [],
     pinnedIds: [],
     boardSettings: {
         boards: [],
@@ -73,6 +76,26 @@ export default class TaskweaverPlugin extends Plugin {
             },
         });
 
+        // Add Task command
+        this.addCommand({
+            id: 'add-new-task',
+            name: 'Add new task',
+            callback: () => {
+                new AddTaskModal(this.app, this.engine, async () => {
+                    await this.engine.initialize();
+                    this.saveSettings();
+                }).open();
+            },
+        });
+
+        // Add ribbon icon for quick add
+        this.addRibbonIcon('plus-circle', 'Add New Task', () => {
+            new AddTaskModal(this.app, this.engine, async () => {
+                await this.engine.initialize();
+                this.saveSettings();
+            }).open();
+        });
+
         // Add settings tab
         this.addSettingTab(new TaskweaverSettingTab(this.app, this));
 
@@ -83,7 +106,13 @@ export default class TaskweaverPlugin extends Plugin {
     }
 
     onunload(): void {
-        this.engine.destroy();
+        try {
+            if (this.engine) {
+                this.engine.destroy();
+            }
+        } catch (e) {
+            console.error('TaskWeaver: Error during unload', e);
+        }
     }
 
     async activateSidebarView(viewType: string): Promise<void> {

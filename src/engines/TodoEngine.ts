@@ -9,12 +9,16 @@ export interface TodoItem {
     priority: number;
     rawLine: string;
     pinned: boolean;
+    indentLevel: number;      // Indentation level (0 = root)
+    parentId: string | null;  // Parent todo ID (null = no parent)
 }
 
 export interface TodoEngineSettings {
     priorityOrder: string[]; // list of todo IDs in order
     hideCompleted: boolean;  // hide completed todos from display
     excludeFolders: string[]; // folders to exclude from scanning
+    includeFolders: string[]; // folders to include (if set, only scan these)
+    tagFilters: string[]; // only show todos with these tags (empty = all)
     pinnedIds: string[]; // pinned todo IDs
 }
 
@@ -25,6 +29,9 @@ export class TodoEngine {
     private settings: TodoEngineSettings;
     private onUpdateCallbacks: ((todos: TodoItem[]) => void)[] = [];
     private fileEventRef: EventRef | null = null;
+    private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    private pendingFiles: Set<string> = new Set();
+    private readonly DEBOUNCE_MS = 150;
 
     constructor(vault: Vault, metadataCache: MetadataCache, settings: TodoEngineSettings) {
         this.vault = vault;
@@ -41,37 +48,65 @@ export class TodoEngine {
         if (this.fileEventRef) {
             this.vault.offref(this.fileEventRef);
         }
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
     }
 
     private setupFileWatcher(): void {
         this.fileEventRef = this.vault.on('modify', async (file) => {
             if (file instanceof TFile && file.extension === 'md') {
-                await this.scanFile(file);
-                this.notifyUpdate();
+                this.queueFileUpdate(file.path);
             }
         });
 
         this.vault.on('delete', (file) => {
             if (file instanceof TFile && file.extension === 'md') {
                 this.removeTodosFromFile(file.path);
-                this.notifyUpdate();
+                this.scheduleDebouncedUpdate();
             }
         });
 
         this.vault.on('create', async (file) => {
             if (file instanceof TFile && file.extension === 'md') {
-                await this.scanFile(file);
-                this.notifyUpdate();
+                this.queueFileUpdate(file.path);
             }
         });
 
         this.vault.on('rename', async (file, oldPath) => {
             if (file instanceof TFile && file.extension === 'md') {
                 this.removeTodosFromFile(oldPath);
-                await this.scanFile(file);
-                this.notifyUpdate();
+                this.queueFileUpdate(file.path);
             }
         });
+    }
+
+    private queueFileUpdate(filePath: string): void {
+        this.pendingFiles.add(filePath);
+        this.scheduleDebouncedUpdate();
+    }
+
+    private scheduleDebouncedUpdate(): void {
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
+        this.debounceTimer = setTimeout(() => this.processPendingUpdates(), this.DEBOUNCE_MS);
+    }
+
+    private async processPendingUpdates(): Promise<void> {
+        const filesToProcess = Array.from(this.pendingFiles);
+        this.pendingFiles.clear();
+
+        for (const filePath of filesToProcess) {
+            const file = this.vault.getAbstractFileByPath(filePath);
+            if (file instanceof TFile) {
+                await this.scanFile(file);
+            }
+        }
+
+        if (filesToProcess.length > 0) {
+            this.notifyUpdate();
+        }
     }
 
     private async scanAllFiles(): Promise<void> {
@@ -82,7 +117,18 @@ export class TodoEngine {
     }
 
     private isExcluded(filePath: string): boolean {
-        return this.settings.excludeFolders.some(folder => {
+        // If includeFolders is set and not empty, only include those folders
+        const includeFolders = this.settings.includeFolders || [];
+        if (includeFolders.length > 0) {
+            const included = includeFolders.some(folder => {
+                const normalized = folder.endsWith('/') ? folder : folder + '/';
+                return filePath.startsWith(normalized) || filePath.startsWith(folder);
+            });
+            if (!included) return true;
+        }
+
+        // Check excludeFolders
+        return (this.settings.excludeFolders || []).some(folder => {
             const normalized = folder.endsWith('/') ? folder : folder + '/';
             return filePath.startsWith(normalized) || filePath.startsWith(folder);
         });
@@ -98,15 +144,34 @@ export class TodoEngine {
         // Regex for markdown todo items: - [ ] or - [x] or * [ ] or * [x]
         const todoRegex = /^(\s*)[-*]\s+\[([ xX])\]\s+(.+)$/;
 
+        // Track parent stack for sub-task hierarchy
+        const parentStack: { id: string; indent: number }[] = [];
+
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             if (!line) continue;
             const match = line.match(todoRegex);
 
-            if (match && match[2] && match[3]) {
+            if (match && match[1] !== undefined && match[2] && match[3]) {
+                const indent = match[1].length;
+                const indentLevel = Math.floor(indent / 2); // Assume 2-space indentation
                 const completed = match[2].toLowerCase() === 'x';
                 const text = match[3].trim();
                 const id = this.generateId(file.path, i + 1, text);
+
+                // Pop parents with equal or greater indent
+                while (parentStack.length > 0) {
+                    const lastParent = parentStack[parentStack.length - 1];
+                    if (lastParent && lastParent.indent >= indent) {
+                        parentStack.pop();
+                    } else {
+                        break;
+                    }
+                }
+
+                // Find parent (last item in stack if any)
+                const lastItem = parentStack[parentStack.length - 1];
+                const parentId = lastItem ? lastItem.id : null;
 
                 const todo: TodoItem = {
                     id,
@@ -117,9 +182,14 @@ export class TodoEngine {
                     priority: this.getPriority(id),
                     rawLine: line,
                     pinned: this.isPinned(id),
+                    indentLevel,
+                    parentId,
                 };
 
                 this.todos.set(id, todo);
+
+                // Push current todo as potential parent
+                parentStack.push({ id, indent });
             }
         }
     }
@@ -162,6 +232,14 @@ export class TodoEngine {
             todos = todos.filter(t => !t.completed);
         }
 
+        // Tag filter: only show todos containing specified tags
+        const tagFilters = this.settings.tagFilters || [];
+        if (respectFilters && tagFilters.length > 0) {
+            todos = todos.filter(todo =>
+                tagFilters.some(tag => todo.text.includes(tag))
+            );
+        }
+
         // Pinned items always on top, then sort by priority
         return todos.sort((a, b) => {
             if (a.pinned && !b.pinned) return -1;
@@ -172,6 +250,29 @@ export class TodoEngine {
 
     getAllTodos(): TodoItem[] {
         return this.getTodos(false);
+    }
+
+    // Sub-task methods
+    getSubTasks(todoId: string): TodoItem[] {
+        return Array.from(this.todos.values())
+            .filter(t => t.parentId === todoId)
+            .sort((a, b) => a.lineNumber - b.lineNumber);
+    }
+
+    getRootTodos(): TodoItem[] {
+        return this.getTodos().filter(t => t.parentId === null);
+    }
+
+    hasSubTasks(todoId: string): boolean {
+        return Array.from(this.todos.values()).some(t => t.parentId === todoId);
+    }
+
+    getSubTaskProgress(todoId: string): { completed: number; total: number } {
+        const subTasks = this.getSubTasks(todoId);
+        return {
+            completed: subTasks.filter(t => t.completed).length,
+            total: subTasks.length
+        };
     }
 
     findDuplicates(): Map<string, TodoItem[]> {

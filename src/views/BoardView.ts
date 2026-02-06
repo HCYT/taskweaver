@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, Menu, TFile, Modal, App, Setting } from 'obsidian';
-import { TodoItem, TodoEngine } from './TodoEngine';
-import { BoardEngine, Board, Column } from './BoardEngine';
+import { TodoItem, TodoEngine } from '../engines/TodoEngine';
+import { BoardEngine, Board, Column } from '../engines/BoardEngine';
+import { EditTaskModal } from '../modals/EditTaskModal';
 
 export const VIEW_TYPE_BOARD = 'taskweaver-board-view';
 
@@ -12,6 +13,7 @@ export class BoardView extends ItemView {
     private draggedItem: HTMLElement | null = null;
     private draggedTodoId: string | null = null;
     private draggedColumnId: string | null = null;
+    private searchFilter: string = '';
 
     constructor(
         leaf: WorkspaceLeaf,
@@ -54,9 +56,22 @@ export class BoardView extends ItemView {
     private render(): void {
         this.containerEl_.empty();
 
-        // Header with board selector
+        // Header with board selector and search
         const header = this.containerEl_.createDiv({ cls: 'taskweaver-board-header' });
         this.renderBoardSelector(header);
+
+        // Search input
+        const searchWrap = header.createDiv({ cls: 'taskweaver-board-search-wrap' });
+        const searchInput = searchWrap.createEl('input', {
+            type: 'text',
+            placeholder: 'Search todos...',
+            cls: 'taskweaver-board-search',
+        });
+        searchInput.value = this.searchFilter;
+        searchInput.addEventListener('input', () => {
+            this.searchFilter = searchInput.value;
+            this.render();
+        });
 
         const board = this.boardEngine.getActiveBoard();
         if (!board) {
@@ -71,7 +86,18 @@ export class BoardView extends ItemView {
         const columnsEl = this.containerEl_.createDiv({ cls: 'taskweaver-board-columns' });
 
         for (const column of board.columns) {
+            // Skip empty columns if hideEmptyColumns is enabled
+            if (board.hideEmptyColumns) {
+                const todos = this.boardEngine.getTodosForColumn(board.id, column.id);
+                if (todos.length === 0) continue;
+            }
             this.renderColumn(columnsEl, board, column);
+        }
+
+        // Archive column (if there are archived items)
+        const archivedTodos = this.boardEngine.getArchivedTodos(board.id);
+        if (archivedTodos.length > 0) {
+            this.renderArchiveColumn(columnsEl, board, archivedTodos);
         }
 
         // Add column button
@@ -185,7 +211,36 @@ export class BoardView extends ItemView {
 
         // Column header
         const headerEl = columnEl.createDiv({ cls: 'taskweaver-column-header' });
+
+        // Minimized column handling
+        if (column.minimized) {
+            columnEl.addClass('is-minimized');
+        }
+
+        // Work limit warning
+        const todoCount = this.boardEngine.getTodosForColumn(board.id, column.id).length;
+        if (column.workLimit && todoCount > column.workLimit) {
+            columnEl.addClass('over-work-limit');
+        }
+
+        // Title with count
         const titleEl = headerEl.createSpan({ text: column.name, cls: 'taskweaver-column-title' });
+        const countEl = headerEl.createSpan({
+            text: `(${todoCount}${column.workLimit ? '/' + column.workLimit : ''})`,
+            cls: 'taskweaver-column-count'
+        });
+
+        // Work limit warning icon
+        if (column.workLimit && todoCount > column.workLimit) {
+            const warningEl = headerEl.createSpan({ text: '⚠️', cls: 'taskweaver-work-limit-warning' });
+            warningEl.setAttribute('aria-label', `Over work limit (${todoCount}/${column.workLimit})`);
+        }
+
+        // Click to toggle minimize
+        titleEl.addEventListener('click', () => {
+            this.boardEngine.toggleColumnMinimized(board.id, column.id);
+            this.onSettingsChange();
+        });
 
         // Column context menu
         headerEl.addEventListener('contextmenu', (e) => {
@@ -214,6 +269,45 @@ export class BoardView extends ItemView {
                     });
             });
             menu.addSeparator();
+
+            // Minimize toggle
+            menu.addItem(item => {
+                item.setTitle(column.minimized ? 'Expand Column' : 'Minimize Column')
+                    .setIcon(column.minimized ? 'maximize-2' : 'minimize-2')
+                    .onClick(() => {
+                        this.boardEngine.toggleColumnMinimized(board.id, column.id);
+                        this.onSettingsChange();
+                    });
+            });
+
+            // Work limit setting
+            menu.addItem(item => {
+                item.setTitle('Set Work Limit')
+                    .setIcon('gauge')
+                    .onClick(() => this.promptSetWorkLimit(board.id, column));
+            });
+
+            // Sorting options sub-menu
+            menu.addItem(item => {
+                item.setTitle('Sort by Priority')
+                    .setIcon('arrow-up-down')
+                    .onClick(() => {
+                        this.boardEngine.setColumnSortConfig(board.id, column.id,
+                            { criteria: 'priority', order: 'asc' });
+                        this.onSettingsChange();
+                    });
+            });
+            menu.addItem(item => {
+                item.setTitle('Sort by Name')
+                    .setIcon('sort-asc')
+                    .onClick(() => {
+                        this.boardEngine.setColumnSortConfig(board.id, column.id,
+                            { criteria: 'name', order: 'asc' });
+                        this.onSettingsChange();
+                    });
+            });
+
+            menu.addSeparator();
             menu.addItem(item => {
                 item.setTitle('Delete')
                     .setIcon('trash')
@@ -225,8 +319,15 @@ export class BoardView extends ItemView {
             menu.showAtMouseEvent(e);
         });
 
-        // Todos in this column
-        const todos = this.boardEngine.getTodosForColumn(board.id, column.id);
+        // Todos in this column (with search filter)
+        let todos = this.boardEngine.getTodosForColumn(board.id, column.id);
+        if (this.searchFilter) {
+            const filter = this.searchFilter.toLowerCase();
+            todos = todos.filter(t =>
+                t.text.toLowerCase().includes(filter) ||
+                t.filePath.toLowerCase().includes(filter)
+            );
+        }
         const todosEl = columnEl.createDiv({ cls: 'taskweaver-column-todos' });
 
         // Drop zone events - supports both internal and cross-view drop
@@ -272,6 +373,15 @@ export class BoardView extends ItemView {
         if (this.boardEngine.isBoardPinned(board.id, todo.id)) {
             card.addClass('is-pinned');
         }
+        // Priority color (1=high, 2=medium, 3=low)
+        const priority = this.boardEngine.getTodoPriority(board.id, todo.id);
+        if (priority === 1) {
+            card.addClass('priority-high');
+        } else if (priority === 2) {
+            card.addClass('priority-medium');
+        } else if (priority === 3) {
+            card.addClass('priority-low');
+        }
 
         // Checkbox
         const checkbox = card.createEl('input', { type: 'checkbox', cls: 'taskweaver-card-checkbox' });
@@ -289,6 +399,14 @@ export class BoardView extends ItemView {
         const fileName = todo.filePath.split('/').pop() || todo.filePath;
         link.setText(fileName);
         link.addEventListener('click', () => this.openFile(todo));
+
+        // Sub-task progress indicator
+        if (this.todoEngine.hasSubTasks(todo.id)) {
+            const progress = this.todoEngine.getSubTaskProgress(todo.id);
+            const progressEl = card.createDiv({ cls: 'taskweaver-subtask-progress' });
+            progressEl.setText(`📋 ${progress.completed}/${progress.total}`);
+            progressEl.setAttribute('aria-label', `${progress.completed} of ${progress.total} subtasks completed`);
+        }
 
         // Drag events
         card.addEventListener('dragstart', (e) => {
@@ -313,6 +431,70 @@ export class BoardView extends ItemView {
         });
     }
 
+    private renderArchiveColumn(container: HTMLElement, board: Board, archivedTodos: TodoItem[]): void {
+        const columnEl = container.createDiv({ cls: 'taskweaver-board-column taskweaver-archive-column' });
+
+        // Header
+        const header = columnEl.createDiv({ cls: 'taskweaver-column-header' });
+        const titleEl = header.createDiv({ cls: 'taskweaver-column-title' });
+        titleEl.setText(`📦 Archive (${archivedTodos.length})`);
+
+        // Clear all button
+        const clearBtn = header.createEl('button', { cls: 'taskweaver-archive-clear-btn' });
+        clearBtn.setText('Clear All');
+        clearBtn.setAttribute('title', 'Remove all archived items');
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Remove all archived tasks from this board?')) {
+                for (const todo of archivedTodos) {
+                    this.boardEngine.unarchiveTodo(board.id, todo.id);
+                }
+                this.onSettingsChange();
+            }
+        });
+
+        // Archived items list
+        const listEl = columnEl.createDiv({ cls: 'taskweaver-column-todos' });
+
+        for (const todo of archivedTodos) {
+            const card = listEl.createDiv({
+                cls: `taskweaver-card taskweaver-archived-card ${todo.completed ? 'is-completed' : ''}`
+            });
+
+            // Text
+            const text = card.createDiv({ cls: 'taskweaver-card-text' });
+            text.setText(todo.text);
+
+            // File link
+            const link = card.createDiv({ cls: 'taskweaver-card-link' });
+            const fileName = todo.filePath.split('/').pop() || todo.filePath;
+            link.setText(fileName);
+            link.addEventListener('click', () => this.openFile(todo));
+
+            // Context menu for unarchive
+            card.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const menu = new Menu();
+
+                menu.addItem(item => {
+                    item.setTitle('📤 Restore from archive')
+                        .setIcon('archive-restore')
+                        .onClick(() => {
+                            this.boardEngine.unarchiveTodo(board.id, todo.id);
+                            this.onSettingsChange();
+                        });
+                });
+
+                menu.addItem(item => {
+                    item.setTitle('Open file')
+                        .setIcon('file')
+                        .onClick(() => this.openFile(todo));
+                });
+
+                menu.showAtMouseEvent(e);
+            });
+        }
+    }
+
     private showCardContextMenu(e: MouseEvent, board: Board, todo: TodoItem): void {
         const menu = new Menu();
 
@@ -320,6 +502,17 @@ export class BoardView extends ItemView {
             item.setTitle('Open file')
                 .setIcon('file')
                 .onClick(() => this.openFile(todo));
+        });
+
+        menu.addItem(item => {
+            item.setTitle('Edit task')
+                .setIcon('pencil')
+                .onClick(() => {
+                    new EditTaskModal(this.app, this.todoEngine, todo, async () => {
+                        await this.todoEngine.initialize();
+                        this.onSettingsChange();
+                    }).open();
+                });
         });
 
         menu.addSeparator();
@@ -352,6 +545,47 @@ export class BoardView extends ItemView {
             item.setTitle(todo.completed ? 'Mark incomplete' : 'Mark complete')
                 .setIcon(todo.completed ? 'square' : 'check-square')
                 .onClick(() => this.todoEngine.toggleTodo(todo.id));
+        });
+
+        menu.addSeparator();
+
+        // Priority options
+        const currentPriority = this.boardEngine.getTodoPriority(board.id, todo.id);
+        menu.addItem(item => {
+            item.setTitle('🔴 High Priority')
+                .setIcon(currentPriority === 1 ? 'check' : 'circle')
+                .onClick(() => {
+                    this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 1 ? 0 : 1);
+                    this.onSettingsChange();
+                });
+        });
+        menu.addItem(item => {
+            item.setTitle('🟡 Medium Priority')
+                .setIcon(currentPriority === 2 ? 'check' : 'circle')
+                .onClick(() => {
+                    this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 2 ? 0 : 2);
+                    this.onSettingsChange();
+                });
+        });
+        menu.addItem(item => {
+            item.setTitle('🟢 Low Priority')
+                .setIcon(currentPriority === 3 ? 'check' : 'circle')
+                .onClick(() => {
+                    this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 3 ? 0 : 3);
+                    this.onSettingsChange();
+                });
+        });
+
+        menu.addSeparator();
+
+        // Archive option
+        menu.addItem(item => {
+            item.setTitle('📦 Archive task')
+                .setIcon('archive')
+                .onClick(() => {
+                    this.boardEngine.archiveTodo(board.id, todo.id);
+                    this.onSettingsChange();
+                });
         });
 
         menu.showAtMouseEvent(e);
@@ -396,6 +630,17 @@ export class BoardView extends ItemView {
         new InputModal(this.app, 'Rename Column', 'Enter new column name:', column.name, (name) => {
             if (name && name.trim()) {
                 this.boardEngine.renameColumn(boardId, column.id, name.trim());
+                this.onSettingsChange();
+            }
+        }).open();
+    }
+
+    private promptSetWorkLimit(boardId: string, column: Column): void {
+        const currentLimit = column.workLimit?.toString() || '';
+        new InputModal(this.app, 'Set Work Limit', 'Enter max tasks (leave empty to disable):', currentLimit, (value) => {
+            const limit = value.trim() ? parseInt(value.trim(), 10) : undefined;
+            if (limit === undefined || (!isNaN(limit) && limit > 0)) {
+                this.boardEngine.setColumnWorkLimit(boardId, column.id, limit);
                 this.onSettingsChange();
             }
         }).open();
