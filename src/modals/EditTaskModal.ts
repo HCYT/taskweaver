@@ -9,6 +9,7 @@ export class EditTaskModal extends Modal {
     private taskText: string;
     private dueDate: string = '';
     private tags: string[] = [];
+    private completedState: boolean; // Local state for checkbox
 
     constructor(app: App, todoEngine: TodoEngine, todo: TodoItem, onTaskUpdated: () => void) {
         super(app);
@@ -20,6 +21,7 @@ export class EditTaskModal extends Modal {
         this.taskText = this.parseTaskText(todo.text);
         this.dueDate = this.parseDueDate(todo.text);
         this.tags = this.parseTags(todo.text);
+        this.completedState = todo.completed;
     }
 
     private parseTaskText(text: string): string {
@@ -43,66 +45,79 @@ export class EditTaskModal extends Modal {
 
     onOpen(): void {
         const { contentEl } = this;
-        contentEl.addClass('taskweaver-edit-task-modal');
-        contentEl.createEl('h2', { text: 'Edit Task' });
+        contentEl.empty();
+        contentEl.addClass('taskweaver-edit-modal');
 
-        // Task text input
-        new Setting(contentEl)
-            .setName('Task')
-            .addTextArea(text => {
-                text.setValue(this.taskText)
-                    .setPlaceholder('Task description')
-                    .onChange(value => { this.taskText = value; });
-                text.inputEl.rows = 3;
-                text.inputEl.addClass('taskweaver-task-textarea');
-            });
+        // Header
+        const header = contentEl.createDiv('taskweaver-modal-header');
+        header.createEl('h2', { text: 'Edit Task' });
 
-        // Due date
-        new Setting(contentEl)
-            .setName('Due date')
-            .addText(text => {
-                text.setValue(this.dueDate)
-                    .setPlaceholder('YYYY-MM-DD')
-                    .onChange(value => { this.dueDate = value; });
-                text.inputEl.type = 'date';
-            });
+        // Main Content Area
+        const main = contentEl.createDiv('taskweaver-modal-body');
 
-        // Tags display
-        new Setting(contentEl)
-            .setName('Tags')
-            .setDesc(this.tags.length > 0 ? this.tags.join(' ') : 'No tags');
+        // 1. Task Description (Large Textarea)
+        const taskSection = main.createDiv('taskweaver-field-group full-width');
+        taskSection.createEl('label', { text: 'Description' });
+        const textArea = taskSection.createEl('textarea', { cls: 'taskweaver-task-textarea' });
+        textArea.value = this.taskText;
+        textArea.placeholder = 'What needs to be done?';
+        textArea.rows = 4;
+        textArea.addEventListener('input', (e) => {
+            this.taskText = (e.target as HTMLTextAreaElement).value;
+        });
 
-        // File info
-        const fileInfo = contentEl.createDiv({ cls: 'taskweaver-edit-file-info' });
-        fileInfo.createSpan({ text: `File: ${this.todo.filePath}` });
-        fileInfo.createSpan({ text: ` (line ${this.todo.lineNumber})` });
+        // 2. Metadata Grid (Date, Status)
+        const metaGrid = main.createDiv('taskweaver-meta-grid');
+
+        // Due Date
+        const dateSection = metaGrid.createDiv('taskweaver-field-group');
+        dateSection.createEl('label', { text: 'Due Date' });
+        const dateInput = dateSection.createEl('input', { type: 'date', cls: 'taskweaver-input' });
+        dateInput.value = this.dueDate;
+        dateInput.addEventListener('change', (e) => {
+            this.dueDate = (e.target as HTMLInputElement).value;
+        });
 
         // Status
-        new Setting(contentEl)
-            .setName('Status')
+        const statusSection = metaGrid.createDiv('taskweaver-field-group');
+        statusSection.createEl('label', { text: 'Status' });
+        const statusToggle = new Setting(statusSection)
             .addToggle(toggle => {
-                toggle.setValue(this.todo.completed)
-                    .onChange(async (value) => {
-                        if (value !== this.todo.completed) {
-                            await this.todoEngine.toggleTodo(this.todo.id);
-                        }
+                toggle.setValue(this.completedState)
+                    .onChange((value) => {
+                        this.completedState = value;
                     });
-            })
-            .setDesc(this.todo.completed ? 'Completed' : 'Not completed');
+            });
 
-        // Buttons
-        new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('Save')
-                .setCta()
-                .onClick(() => this.submit()))
-            .addButton(btn => btn
-                .setButtonText('Delete')
-                .setWarning()
-                .onClick(() => this.confirmDelete()))
-            .addButton(btn => btn
-                .setButtonText('Cancel')
-                .onClick(() => this.close()));
+        // Tags Preview (Read-only for now or simple display)
+        if (this.tags.length > 0) {
+            const tagSection = main.createDiv('taskweaver-field-group');
+            tagSection.createEl('label', { text: 'Tags' });
+            const tagContainer = tagSection.createDiv('taskweaver-tags-list');
+            this.tags.forEach(tag => {
+                tagContainer.createSpan({ text: tag, cls: 'taskweaver-tag' });
+            });
+        }
+
+        // Footer Info
+        const footerInfo = contentEl.createDiv('taskweaver-modal-info');
+        footerInfo.createSpan({ text: `${this.todo.filePath}:${this.todo.lineNumber}`, cls: 'taskweaver-monospace' });
+
+
+        // Actions Footer
+        const actions = contentEl.createDiv('taskweaver-modal-actions');
+
+        const deleteBtn = actions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
+        deleteBtn.addEventListener('click', () => this.confirmDelete());
+
+        const spacer = actions.createDiv({ cls: 'spacer' });
+        spacer.style.flex = '1';
+
+        const cancelBtn = actions.createEl('button', { text: 'Cancel' });
+        cancelBtn.addEventListener('click', () => this.close());
+
+        const saveBtn = actions.createEl('button', { text: 'Save', cls: 'mod-cta' });
+        saveBtn.addEventListener('click', () => this.submit());
     }
 
     private async submit(): Promise<void> {
@@ -134,13 +149,17 @@ export class EditTaskModal extends Modal {
 
                 if (lineIndex >= 0 && lineIndex < lines.length) {
                     // Preserve checkbox state
-                    const checkbox = this.todo.completed ? '- [x]' : '- [ ]';
+                    const checkbox = this.completedState ? '- [x]' : '- [ ]';
                     lines[lineIndex] = `${checkbox} ${newTaskLine}`;
 
                     await this.app.vault.modify(file as any, lines.join('\n'));
                     new Notice('Task updated');
                     this.close();
-                    this.onTaskUpdated();
+                    try {
+                        this.onTaskUpdated();
+                    } catch (e) {
+                        console.error('Error updating task view:', e);
+                    }
                 }
             }
         } catch (error) {
@@ -165,7 +184,11 @@ export class EditTaskModal extends Modal {
                     await this.app.vault.modify(file as any, lines.join('\n'));
                     new Notice('Task deleted');
                     this.close();
-                    this.onTaskUpdated();
+                    try {
+                        this.onTaskUpdated();
+                    } catch (e) {
+                        console.error('Error updating task view:', e);
+                    }
                 }
             }
         } catch (error) {

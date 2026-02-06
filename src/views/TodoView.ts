@@ -43,6 +43,40 @@ export class TodoView extends ItemView {
         contentEl.empty();
         contentEl.addClass('taskweaver-container');
 
+        // FORCE INJECT STYLES for debugging/robustness
+        const styleId = 'taskweaver-injected-styles';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .taskweaver-header {
+                    display: flex !important;
+                    gap: 8px !important;
+                    align-items: center !important;
+                }
+                .taskweaver-view-selector {
+                    margin-bottom: 0 !important;
+                    flex-shrink: 0;
+                    min-width: 120px;
+                }
+                .taskweaver-search {
+                    flex: 1 !important;
+                    width: auto !important;
+                }
+                .taskweaver-edit-modal {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .taskweaver-meta-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         // Header with search and view mode
         const header = contentEl.createDiv({ cls: 'taskweaver-header' });
 

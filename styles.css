@@ -10,11 +10,16 @@
 /* Search */
 .taskweaver-header {
   margin-bottom: 12px;
+  display: flex !important;
+  gap: 8px;
+  align-items: center;
+  /* DEBUG: If you see this red border, CSS is loading */
+  /* border: 1px solid red; */
 }
 
 .taskweaver-search {
-  width: 100%;
-  padding: 8px 12px;
+  flex: 1;
+  padding: 6px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
@@ -34,7 +39,9 @@
 
 /* View mode selector */
 .taskweaver-view-selector {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  min-width: 120px;
 }
 
 .taskweaver-view-select {
@@ -280,22 +287,26 @@
 .taskweaver-board-header {
   margin-bottom: 12px;
   flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .taskweaver-board-selector {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .taskweaver-board-select {
-  flex: 1;
   padding: 6px 10px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
   color: var(--text-normal);
   font-size: 14px;
+  min-width: 140px;
 }
 
 .taskweaver-board-add-btn,
@@ -537,8 +548,8 @@
 /* Board search */
 .taskweaver-board-search-wrap {
   flex: 1;
-  max-width: 200px;
-  margin-left: 12px;
+  min-width: 0;
+  /* Allow shrinking */
 }
 
 .taskweaver-board-search {
@@ -614,7 +625,103 @@
   opacity: 0.9;
 }
 
-.taskweaver-archived-card {
-  opacity: 0.7;
-  border-left: 3px solid var(--text-muted);
+
+/* Modal Refactor Styles */
+.taskweaver-edit-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  /* max-width is handled by obsidian modal usually, but we can set it if we want to override */
+}
+
+.taskweaver-modal-header {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+.taskweaver-modal-header h2 {
+  margin: 0;
+  font-size: 1.25em;
+  font-weight: 600;
+}
+
+.taskweaver-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.taskweaver-field-group label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.taskweaver-task-textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px;
+  font-size: 1em;
+  line-height: 1.5;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.taskweaver-task-textarea:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.taskweaver-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
+
+.taskweaver-input {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.taskweaver-modal-info {
+  font-size: 0.8em;
+  color: var(--text-faint);
+  text-align: right;
+  margin-top: -8px;
+}
+
+.taskweaver-monospace {
+  font-family: var(--font-monospace);
+}
+
+.taskweaver-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.taskweaver-modal-actions button {
+  padding: 6px 16px;
+  font-weight: 500;
+}
+
+.taskweaver-tag {
+  display: inline-block;
+  background: var(--background-secondary-alt);
+  color: var(--text-accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  margin-right: 6px;
+  border: 1px solid transparent;
 }
