@@ -36,12 +36,12 @@ export class ColumnTypeModal extends Modal {
             .setDesc('How tasks are assigned to this column')
             .addDropdown(dropdown => {
                 dropdown
-                    .addOption('manual', '📝 Manual (drag & drop)')
-                    .addOption('completed', '✅ Completed Tasks')
-                    .addOption('undated', '📭 No Due Date')
-                    .addOption('overdue', '🔴 Overdue')
-                    .addOption('dated', '📅 Date Range')
-                    .addOption('namedTag', '🏷️ By Tag')
+                    .addOption('manual', 'Manual (drag & drop)')
+                    .addOption('completed', 'Completed Tasks')
+                    .addOption('undated', 'No Due Date')
+                    .addOption('overdue', 'Overdue')
+                    .addOption('dated', 'Date Range')
+                    .addOption('namedTag', 'By Tag')
                     .setValue(this.currentType)
                     .onChange((value) => {
                         this.currentType = value as ColumnType;

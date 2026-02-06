@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: TaskweaverSettings = {
     includeFolders: [],
     tagFilters: [],
     pinnedIds: [],
+    priorities: {},
+    archivedIds: [],
     boardSettings: {
         boards: [],
         activeBoardId: null,

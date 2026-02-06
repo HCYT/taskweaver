@@ -1,15 +1,27 @@
 import { ColumnType } from '../engines/BoardEngine';
 
 /**
- * Column type display labels and emojis
+ * Lucide icon names for column types
+ */
+export const COLUMN_TYPE_ICONS: Record<ColumnType, string> = {
+    manual: 'edit-3',
+    completed: 'check-circle-2',
+    undated: 'inbox',
+    overdue: 'alert-circle',
+    dated: 'calendar',
+    namedTag: 'tag',
+};
+
+/**
+ * Column type display labels (text only, no emoji)
  */
 export const COLUMN_TYPE_LABELS: Record<ColumnType, string> = {
-    manual: '📝 Manual',
-    completed: '✅ Completed',
-    undated: '📭 No Date',
-    overdue: '🔴 Overdue',
-    dated: '📅 Dated',
-    namedTag: '🏷️ Tag',
+    manual: 'Manual',
+    completed: 'Completed',
+    undated: 'No Date',
+    overdue: 'Overdue',
+    dated: 'Dated',
+    namedTag: 'Tag',
 };
 
 /**
@@ -25,17 +37,17 @@ export const COLUMN_TYPE_DESCRIPTIONS: Record<ColumnType, string> = {
 };
 
 /**
- * Get display label for column type (with emoji)
+ * Get Lucide icon name for column type
  */
-export function getColumnTypeLabel(type: ColumnType): string {
-    return COLUMN_TYPE_LABELS[type] || type;
+export function getColumnTypeIcon(type: ColumnType): string {
+    return COLUMN_TYPE_ICONS[type] || 'edit-3';
 }
 
 /**
- * Get emoji-only for compact display
+ * Get display label for column type (text only)
  */
-export function getColumnTypeEmoji(type: ColumnType): string {
-    return COLUMN_TYPE_LABELS[type]?.split(' ')[0] || '📝';
+export function getColumnTypeLabel(type: ColumnType): string {
+    return COLUMN_TYPE_LABELS[type] || type;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, TFile } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
 import { BoardEngine, Board, Column, ColumnType } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
@@ -9,7 +9,7 @@ import { FilterPopover } from '../components/FilterPopover';
 import { FilterState, DEFAULT_FILTER_STATE } from '../utils/FilterState';
 import { filterTodos } from '../utils/TodoFilterer';
 import { getDateStatusClass, formatDateRelative } from '../utils/DateUtils';
-import { getColumnTypeLabel } from '../utils/ColumnTypeUtils';
+import { getColumnTypeLabel, getColumnTypeIcon } from '../utils/ColumnTypeUtils';
 
 export const VIEW_TYPE_BOARD = 'taskweaver-board-view';
 
@@ -126,7 +126,7 @@ export class BoardView extends ItemView {
 
         // Settings button
         const settingsBtn = header.createEl('button', { cls: 'taskweaver-settings-btn' });
-        settingsBtn.innerHTML = '⚙️';
+        setIcon(settingsBtn, 'settings');
         settingsBtn.setAttribute('aria-label', 'Board Settings');
 
         const board = this.boardEngine.getActiveBoard();
@@ -296,7 +296,8 @@ export class BoardView extends ItemView {
 
         // Work limit warning icon
         if (column.workLimit && todoCount > column.workLimit) {
-            const warningEl = headerEl.createSpan({ text: '⚠️', cls: 'taskweaver-work-limit-warning' });
+            const warningEl = headerEl.createSpan({ cls: 'taskweaver-work-limit-warning' });
+            setIcon(warningEl, 'alert-triangle');
             warningEl.setAttribute('aria-label', `Over work limit (${todoCount}/${column.workLimit})`);
         }
 
@@ -627,7 +628,7 @@ export class BoardView extends ItemView {
         // Header
         const header = columnEl.createDiv({ cls: 'taskweaver-column-header' });
         const titleEl = header.createDiv({ cls: 'taskweaver-column-title' });
-        titleEl.setText(`📦 Archive (${archivedTodos.length})`);
+        titleEl.setText(`Archive (${archivedTodos.length})`);
 
         // Clear all button
         const clearBtn = header.createEl('button', { cls: 'taskweaver-archive-clear-btn' });
@@ -666,7 +667,7 @@ export class BoardView extends ItemView {
                 const menu = new Menu();
 
                 menu.addItem(item => {
-                    item.setTitle('📤 Restore from archive')
+                    item.setTitle('Restore from archive')
                         .setIcon('archive-restore')
                         .onClick(() => {
                             this.boardEngine.unarchiveTodo(board.id, todo.id);
@@ -692,6 +693,12 @@ export class BoardView extends ItemView {
             item.setTitle('Open file')
                 .setIcon('file')
                 .onClick(() => this.openFile(todo));
+        });
+
+        menu.addItem(item => {
+            item.setTitle('Move to file...')
+                .setIcon('file-input')
+                .onClick(() => this.showMoveDialog(todo));
         });
 
         menu.addItem(item => {
@@ -742,7 +749,7 @@ export class BoardView extends ItemView {
         // Priority options
         const currentPriority = this.boardEngine.getTodoPriority(board.id, todo.id);
         menu.addItem(item => {
-            item.setTitle('🔴 High Priority')
+            item.setTitle('High Priority')
                 .setIcon(currentPriority === 1 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 1 ? 0 : 1);
@@ -750,7 +757,7 @@ export class BoardView extends ItemView {
                 });
         });
         menu.addItem(item => {
-            item.setTitle('🟡 Medium Priority')
+            item.setTitle('Medium Priority')
                 .setIcon(currentPriority === 2 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 2 ? 0 : 2);
@@ -758,7 +765,7 @@ export class BoardView extends ItemView {
                 });
         });
         menu.addItem(item => {
-            item.setTitle('🟢 Low Priority')
+            item.setTitle('Low Priority')
                 .setIcon(currentPriority === 3 ? 'check' : 'circle')
                 .onClick(() => {
                     this.boardEngine.setTodoPriority(board.id, todo.id, currentPriority === 3 ? 0 : 3);
@@ -770,7 +777,7 @@ export class BoardView extends ItemView {
 
         // Archive option
         menu.addItem(item => {
-            item.setTitle('📦 Archive task')
+            item.setTitle('Archive task')
                 .setIcon('archive')
                 .onClick(() => {
                     this.boardEngine.archiveTodo(board.id, todo.id);
@@ -779,6 +786,35 @@ export class BoardView extends ItemView {
         });
 
         menu.showAtMouseEvent(e);
+    }
+
+    private async showMoveDialog(todo: TodoItem): Promise<void> {
+        const files = this.app.vault.getMarkdownFiles()
+            .filter(f => f.path !== todo.filePath)
+            .sort((a, b) => a.path.localeCompare(b.path));
+
+        const menu = new Menu();
+
+        for (const file of files.slice(0, 20)) {
+            menu.addItem((item) => {
+                item.setTitle(file.path)
+                    .onClick(async () => {
+                        const success = await this.todoEngine.moveTodoToFile(todo.id, file.path);
+                        if (success) {
+                            this.onSettingsChange();
+                        }
+                    });
+            });
+        }
+
+        if (files.length > 20) {
+            menu.addItem((item) => {
+                item.setTitle(`... and ${files.length - 20} more files`)
+                    .setDisabled(true);
+            });
+        }
+
+        menu.showAtPosition({ x: 0, y: 0 });
     }
 
     private async quickAddTask(text: string, boardId: string, columnId: string): Promise<void> {

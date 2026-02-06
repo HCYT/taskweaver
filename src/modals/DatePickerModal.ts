@@ -25,7 +25,7 @@ export class DatePickerModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'taskweaver-dp-header' });
-        header.createEl('h3', { text: '📅 Select Due Date' });
+        header.createEl('h3', { text: 'Select Due Date' });
 
         // Main container
         const main = contentEl.createDiv({ cls: 'taskweaver-dp-main' });

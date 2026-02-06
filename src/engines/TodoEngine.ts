@@ -22,6 +22,8 @@ export interface TodoEngineSettings {
     includeFolders: string[]; // folders to include (if set, only scan these)
     tagFilters: string[]; // only show todos with these tags (empty = all)
     pinnedIds: string[]; // pinned todo IDs
+    priorities: Record<string, number>; // global priority map (1=high, 2=medium, 3=low)
+    archivedIds: string[]; // archived todo IDs (hidden from list view)
 }
 
 export class TodoEngine {
@@ -349,6 +351,46 @@ export class TodoEngine {
             todo.pinned = this.isPinned(todoId);
         }
         this.notifyUpdate();
+    }
+
+    // Global priority (for List View mode)
+    getGlobalPriority(todoId: string): number {
+        return (this.settings.priorities || {})[todoId] || 0;
+    }
+
+    setGlobalPriority(todoId: string, priority: number): void {
+        if (!this.settings.priorities) {
+            this.settings.priorities = {};
+        }
+        if (priority === 0) {
+            delete this.settings.priorities[todoId];
+        } else {
+            this.settings.priorities[todoId] = priority;
+        }
+        this.notifyUpdate();
+    }
+
+    // Global archive (for List View mode)
+    isArchived(todoId: string): boolean {
+        return (this.settings.archivedIds || []).includes(todoId);
+    }
+
+    toggleArchive(todoId: string): void {
+        if (!this.settings.archivedIds) {
+            this.settings.archivedIds = [];
+        }
+        const index = this.settings.archivedIds.indexOf(todoId);
+        if (index === -1) {
+            this.settings.archivedIds.push(todoId);
+        } else {
+            this.settings.archivedIds.splice(index, 1);
+        }
+        this.notifyUpdate();
+    }
+
+    getArchivedTodos(): TodoItem[] {
+        const archivedIds = this.settings.archivedIds || [];
+        return Array.from(this.todos.values()).filter(t => archivedIds.includes(t.id));
     }
 
     async moveTodoToFile(todoId: string, targetFilePath: string): Promise<boolean> {

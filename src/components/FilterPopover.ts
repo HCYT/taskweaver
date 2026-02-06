@@ -82,7 +82,7 @@ export class FilterPopover {
 
         // Header
         const header = this.popoverEl.createDiv({ cls: 'taskweaver-fp-header' });
-        header.createEl('h4', { text: '🔍 Filters' });
+        header.createEl('h4', { text: 'Filters' });
         const clearBtn = header.createEl('button', { text: 'Clear All', cls: 'taskweaver-fp-clear' });
         clearBtn.addEventListener('click', () => {
             this.state = { ...DEFAULT_FILTER_STATE };
@@ -101,19 +101,19 @@ export class FilterPopover {
         // Date Section
         const dateSection = this.popoverEl.createDiv({ cls: 'taskweaver-fp-section' });
         dateSection.createEl('label', { text: 'Due Date' });
-        this.createToggle(dateSection, '🔴 Overdue', this.state.showOverdue, (v) => {
+        this.createToggle(dateSection, 'Overdue', this.state.showOverdue, (v) => {
             this.state.showOverdue = v;
             this.onChange(this.state);
         });
-        this.createToggle(dateSection, '🟠 Today', this.state.showToday, (v) => {
+        this.createToggle(dateSection, 'Today', this.state.showToday, (v) => {
             this.state.showToday = v;
             this.onChange(this.state);
         });
-        this.createToggle(dateSection, '🔵 Upcoming', this.state.showUpcoming, (v) => {
+        this.createToggle(dateSection, 'Upcoming', this.state.showUpcoming, (v) => {
             this.state.showUpcoming = v;
             this.onChange(this.state);
         });
-        this.createToggle(dateSection, '⚪ No Date', this.state.showNoDate, (v) => {
+        this.createToggle(dateSection, 'No Date', this.state.showNoDate, (v) => {
             this.state.showNoDate = v;
             this.onChange(this.state);
         });
@@ -124,9 +124,9 @@ export class FilterPopover {
         const prioritySelect = prioritySection.createEl('select', { cls: 'taskweaver-fp-select' });
         const options = [
             { value: 'all', label: 'All Priorities' },
-            { value: 'high', label: '⏫ High' },
-            { value: 'medium', label: '🔼 Medium' },
-            { value: 'low', label: '🔽 Low' },
+            { value: 'high', label: 'High' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'low', label: 'Low' },
             { value: 'none', label: 'No Priority' },
         ];
         options.forEach(opt => {

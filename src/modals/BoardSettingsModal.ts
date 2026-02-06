@@ -1,5 +1,6 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, Setting, setIcon } from 'obsidian';
 import { Board, Column, BoardEngine, ColumnType } from '../engines/BoardEngine';
+import { getColumnTypeIcon, getColumnTypeLabel } from '../utils/ColumnTypeUtils';
 
 export class BoardSettingsModal extends Modal {
     private board: Board;
@@ -74,8 +75,9 @@ export class BoardSettingsModal extends Modal {
         for (const column of this.board.columns) {
             const columnRow = container.createDiv({ cls: 'taskweaver-column-row' });
 
-            // Drag handle (visual only for now)
-            columnRow.createSpan({ text: '☰', cls: 'taskweaver-column-drag' });
+            // Drag handle
+            const dragHandle = columnRow.createSpan({ cls: 'taskweaver-column-drag' });
+            setIcon(dragHandle, 'grip-vertical');
 
             // Column name input
             const nameInput = columnRow.createEl('input', {
@@ -88,14 +90,14 @@ export class BoardSettingsModal extends Modal {
                 this.onSave();
             });
 
-            // Type badge
-            const typeBadge = columnRow.createSpan({
-                text: this.getTypeLabel(column.type || 'manual'),
-                cls: 'taskweaver-column-type-badge'
-            });
+            // Type badge with icon
+            const typeBadge = columnRow.createSpan({ cls: 'taskweaver-column-type-badge' });
+            setIcon(typeBadge, getColumnTypeIcon(column.type || 'manual'));
+            typeBadge.setAttribute('aria-label', getColumnTypeLabel(column.type || 'manual'));
 
             // Delete button
-            const deleteBtn = columnRow.createEl('button', { text: '×', cls: 'taskweaver-column-delete' });
+            const deleteBtn = columnRow.createEl('button', { cls: 'taskweaver-column-delete' });
+            setIcon(deleteBtn, 'trash-2');
             deleteBtn.addEventListener('click', () => {
                 if (confirm(`Delete column "${column.name}"?`)) {
                     this.boardEngine.removeColumn(this.board.id, column.id);
@@ -103,17 +105,6 @@ export class BoardSettingsModal extends Modal {
                     this.renderColumns(container);
                 }
             });
-        }
-    }
-
-    private getTypeLabel(type: ColumnType): string {
-        switch (type) {
-            case 'completed': return '✅';
-            case 'undated': return '📭';
-            case 'overdue': return '🔴';
-            case 'dated': return '📅';
-            case 'namedTag': return '🏷️';
-            default: return '📝';
         }
     }
 

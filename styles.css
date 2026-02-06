@@ -1447,3 +1447,87 @@
 .taskweaver-add-column-btn {
   margin-bottom: 16px;
 }
+
+/* ===== TodoView Meta Row (synced with BoardView) ===== */
+
+.taskweaver-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.taskweaver-date-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.taskweaver-date-badge.is-overdue {
+  background: var(--background-modifier-error);
+  color: var(--text-on-accent);
+}
+
+.taskweaver-date-badge.is-today {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.taskweaver-date-badge.is-soon {
+  background: var(--background-modifier-warning);
+  color: var(--text-normal);
+}
+
+.taskweaver-item-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.taskweaver-item-tag-more {
+  padding: 2px 4px;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.taskweaver-subtask-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.taskweaver-progress-bar-mini {
+  display: inline-block;
+  width: 40px;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.taskweaver-progress-bar-mini>span {
+  display: block;
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* TodoView priority colors */
+.taskweaver-item.priority-high {
+  border-left: 3px solid var(--text-error);
+}
+
+.taskweaver-item.priority-medium {
+  border-left: 3px solid var(--text-warning);
+}
+
+.taskweaver-item.priority-low {
+  border-left: 3px solid var(--text-muted);
+}

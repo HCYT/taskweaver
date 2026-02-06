@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, Menu, setIcon } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
 import { BoardEngine, Board, Column } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
@@ -258,6 +258,28 @@ export class TodoView extends ItemView {
             item.addClass('is-duplicate');
         }
 
+        // Priority colors (synced with BoardView)
+        if (board && this.boardEngine) {
+            const priority = this.boardEngine.getTodoPriority(board.id, todo.id);
+            if (priority === 1) {
+                item.addClass('priority-high');
+            } else if (priority === 2) {
+                item.addClass('priority-medium');
+            } else if (priority === 3) {
+                item.addClass('priority-low');
+            }
+        } else {
+            // List View - use global priority
+            const priority = this.engine.getGlobalPriority(todo.id);
+            if (priority === 1) {
+                item.addClass('priority-high');
+            } else if (priority === 2) {
+                item.addClass('priority-medium');
+            } else if (priority === 3) {
+                item.addClass('priority-low');
+            }
+        }
+
         // Check pinned status
         const isPinned = board
             ? this.boardEngine?.isBoardPinned(board.id, todo.id)
@@ -268,7 +290,7 @@ export class TodoView extends ItemView {
 
         // Drag handle
         const handle = item.createDiv({ cls: 'taskweaver-drag-handle' });
-        handle.innerHTML = isPinned ? '📌' : '⋮⋮';
+        setIcon(handle, isPinned ? 'pin' : 'grip-vertical');
 
         // Checkbox
         const checkbox = item.createEl('input', { type: 'checkbox', cls: 'taskweaver-checkbox' });
@@ -277,9 +299,43 @@ export class TodoView extends ItemView {
             await this.engine.toggleTodo(todo.id);
         });
 
-        // Text
+        // Text (clean like BoardView)
+        const cleanText = todo.text
+            .replace(/(?:📅|📆|due::?)\d{4}-\d{2}-\d{2}/g, '')
+            .replace(/#[\w\-\/]+/g, '')
+            .trim();
         const text = item.createDiv({ cls: 'taskweaver-text' });
-        text.setText(todo.text);
+        text.setText(cleanText || todo.text);
+
+        // Meta row (due date, tags)
+        const meta = item.createDiv({ cls: 'taskweaver-item-meta' });
+
+        // Due date badge
+        if (todo.dueDate) {
+            const dateClass = this.getDateStatusClass(todo.dueDate);
+            const dateBadge = meta.createSpan({ cls: `taskweaver-date-badge ${dateClass}` });
+            dateBadge.setText(this.formatDateRelative(todo.dueDate));
+        }
+
+        // Tags (max 3)
+        if (todo.tags && todo.tags.length > 0) {
+            for (const tag of todo.tags.slice(0, 3)) {
+                const tagEl = meta.createSpan({ cls: 'taskweaver-item-tag' });
+                tagEl.setText(tag);
+            }
+            if (todo.tags.length > 3) {
+                const moreEl = meta.createSpan({ cls: 'taskweaver-item-tag-more' });
+                moreEl.setText(`+${todo.tags.length - 3}`);
+            }
+        }
+
+        // Sub-task progress indicator
+        if (this.engine.hasSubTasks(todo.id)) {
+            const progress = this.engine.getSubTaskProgress(todo.id);
+            const progressEl = meta.createSpan({ cls: 'taskweaver-subtask-progress' });
+            const percent = Math.round((progress.completed / progress.total) * 100);
+            progressEl.innerHTML = `<span class="taskweaver-progress-bar-mini"><span style="width:${percent}%"></span></span> ${progress.completed}/${progress.total}`;
+        }
 
         // File link
         const link = item.createDiv({ cls: 'taskweaver-link' });
@@ -315,6 +371,32 @@ export class TodoView extends ItemView {
 
         // Context menu
         item.addEventListener('contextmenu', (e) => this.showContextMenu(e, todo, board));
+    }
+
+    private getDateStatusClass(dateStr: string): string {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const date = new Date(dateStr);
+        date.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) return 'is-overdue';
+        if (diffDays === 0) return 'is-today';
+        if (diffDays <= 3) return 'is-soon';
+        return '';
+    }
+
+    private formatDateRelative(dateStr: string): string {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const date = new Date(dateStr);
+        date.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays === -1) return 'Yesterday';
+        if (diffDays > 0 && diffDays <= 7) return `${diffDays}d`;
+        if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)}d ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
     private async openFile(todo: TodoItem): Promise<void> {
@@ -466,12 +548,95 @@ export class TodoView extends ItemView {
                         this.onSettingsChange();
                     });
             });
+
+            menu.addSeparator();
+
+            // Priority options (synced with BoardView)
+            const currentPriority = this.boardEngine.getTodoPriority(board.id, todo.id);
+            menu.addItem((item) => {
+                item.setTitle('High Priority')
+                    .setIcon(currentPriority === 1 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 1 ? 0 : 1);
+                        this.onSettingsChange();
+                    });
+            });
+            menu.addItem((item) => {
+                item.setTitle('Medium Priority')
+                    .setIcon(currentPriority === 2 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 2 ? 0 : 2);
+                        this.onSettingsChange();
+                    });
+            });
+            menu.addItem((item) => {
+                item.setTitle('Low Priority')
+                    .setIcon(currentPriority === 3 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.boardEngine!.setTodoPriority(board.id, todo.id, currentPriority === 3 ? 0 : 3);
+                        this.onSettingsChange();
+                    });
+            });
+
+            menu.addSeparator();
+
+            // Archive option (synced with BoardView)
+            menu.addItem((item) => {
+                item.setTitle('Archive task')
+                    .setIcon('archive')
+                    .onClick(() => {
+                        this.boardEngine!.archiveTodo(board.id, todo.id);
+                        this.onSettingsChange();
+                    });
+            });
         } else {
+            // List View mode - use global priority/archive
             menu.addItem((item) => {
                 item.setTitle(todo.pinned ? 'Unpin' : 'Pin to top')
                     .setIcon('pin')
                     .onClick(() => {
                         this.engine.togglePin(todo.id);
+                        this.onSettingsChange();
+                    });
+            });
+
+            menu.addSeparator();
+
+            // Global priority options
+            const currentPriority = this.engine.getGlobalPriority(todo.id);
+            menu.addItem((item) => {
+                item.setTitle('High Priority')
+                    .setIcon(currentPriority === 1 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.engine.setGlobalPriority(todo.id, currentPriority === 1 ? 0 : 1);
+                        this.onSettingsChange();
+                    });
+            });
+            menu.addItem((item) => {
+                item.setTitle('Medium Priority')
+                    .setIcon(currentPriority === 2 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.engine.setGlobalPriority(todo.id, currentPriority === 2 ? 0 : 2);
+                        this.onSettingsChange();
+                    });
+            });
+            menu.addItem((item) => {
+                item.setTitle('Low Priority')
+                    .setIcon(currentPriority === 3 ? 'check' : 'circle')
+                    .onClick(() => {
+                        this.engine.setGlobalPriority(todo.id, currentPriority === 3 ? 0 : 3);
+                        this.onSettingsChange();
+                    });
+            });
+
+            menu.addSeparator();
+
+            // Archive option
+            menu.addItem((item) => {
+                item.setTitle('Archive task')
+                    .setIcon('archive')
+                    .onClick(() => {
+                        this.engine.toggleArchive(todo.id);
                         this.onSettingsChange();
                     });
             });
