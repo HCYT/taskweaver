@@ -1,21 +1,28 @@
 import { ItemView, WorkspaceLeaf, TFile, Menu } from 'obsidian';
 import { TodoItem, TodoEngine } from './TodoEngine';
+import { BoardEngine, Board, Column } from './BoardEngine';
 
 export const VIEW_TYPE_TODO = 'taskweaver-view';
 
+type ViewMode = 'list' | string; // 'list' or board ID
+
 export class TodoView extends ItemView {
     private engine: TodoEngine;
+    private boardEngine: BoardEngine | null = null;
     private searchInput: HTMLInputElement;
     private listEl: HTMLElement;
     private currentFilter: string = '';
     private duplicateIds: Set<string> = new Set();
     private draggedItem: HTMLElement | null = null;
+    private draggedTodoId: string | null = null;
     private onSettingsChange: () => void;
+    private viewMode: ViewMode = 'list';
 
-    constructor(leaf: WorkspaceLeaf, engine: TodoEngine, onSettingsChange: () => void) {
+    constructor(leaf: WorkspaceLeaf, engine: TodoEngine, onSettingsChange: () => void, boardEngine?: BoardEngine) {
         super(leaf);
         this.engine = engine;
         this.onSettingsChange = onSettingsChange;
+        this.boardEngine = boardEngine || null;
     }
 
     getViewType(): string {
@@ -35,8 +42,12 @@ export class TodoView extends ItemView {
         contentEl.empty();
         contentEl.addClass('taskweaver-container');
 
-        // Header with search
+        // Header with search and view mode
         const header = contentEl.createDiv({ cls: 'taskweaver-header' });
+
+        // View mode selector
+        this.renderViewModeSelector(header);
+
         this.searchInput = header.createEl('input', {
             type: 'text',
             placeholder: 'Search todos...',
@@ -63,6 +74,36 @@ export class TodoView extends ItemView {
             this.duplicateIds = this.engine.getDuplicateIds();
             this.renderList();
         });
+
+        if (this.boardEngine) {
+            this.boardEngine.onUpdate(() => this.renderList());
+        }
+    }
+
+    private renderViewModeSelector(container: HTMLElement): void {
+        const selectorWrap = container.createDiv({ cls: 'taskweaver-view-selector' });
+        const select = selectorWrap.createEl('select', { cls: 'taskweaver-view-select' });
+
+        // List option
+        const listOption = select.createEl('option', { text: '📋 List View', value: 'list' });
+        if (this.viewMode === 'list') listOption.selected = true;
+
+        // Board options
+        if (this.boardEngine) {
+            const boards = this.boardEngine.getAllBoards();
+            for (const board of boards) {
+                const option = select.createEl('option', {
+                    text: `📊 ${board.name}`,
+                    value: board.id,
+                });
+                if (this.viewMode === board.id) option.selected = true;
+            }
+        }
+
+        select.addEventListener('change', () => {
+            this.viewMode = select.value as ViewMode;
+            this.renderList();
+        });
     }
 
     private updateStats(container: HTMLElement): void {
@@ -81,13 +122,21 @@ export class TodoView extends ItemView {
     private renderList(): void {
         this.listEl.empty();
 
-        let todos = this.currentFilter
-            ? this.engine.search(this.currentFilter)
-            : this.engine.getTodos();
-
         // Update stats
         const statsBar = this.contentEl.querySelector('.taskweaver-stats');
         if (statsBar) this.updateStats(statsBar as HTMLElement);
+
+        if (this.viewMode === 'list') {
+            this.renderFlatList();
+        } else {
+            this.renderBoardGroupedList();
+        }
+    }
+
+    private renderFlatList(): void {
+        let todos = this.currentFilter
+            ? this.engine.search(this.currentFilter)
+            : this.engine.getTodos();
 
         if (todos.length === 0) {
             this.listEl.createDiv({
@@ -98,12 +147,72 @@ export class TodoView extends ItemView {
         }
 
         for (const todo of todos) {
-            this.renderTodoItem(todo);
+            this.renderTodoItem(todo, this.listEl);
         }
     }
 
-    private renderTodoItem(todo: TodoItem): void {
-        const item = this.listEl.createDiv({ cls: 'taskweaver-item' });
+    private renderBoardGroupedList(): void {
+        if (!this.boardEngine) {
+            this.listEl.createDiv({ text: 'No board engine', cls: 'taskweaver-empty' });
+            return;
+        }
+
+        const board = this.boardEngine.getBoard(this.viewMode);
+        if (!board) {
+            this.listEl.createDiv({ text: 'Board not found', cls: 'taskweaver-empty' });
+            return;
+        }
+
+        for (const column of board.columns) {
+            this.renderColumnGroup(board, column);
+        }
+    }
+
+    private renderColumnGroup(board: Board, column: Column): void {
+        const groupEl = this.listEl.createDiv({ cls: 'taskweaver-group' });
+
+        // Group header
+        const headerEl = groupEl.createDiv({ cls: 'taskweaver-group-header' });
+        headerEl.createSpan({ text: column.name, cls: 'taskweaver-group-title' });
+
+        // Drop zone for this column
+        const todosEl = groupEl.createDiv({ cls: 'taskweaver-group-todos' });
+        todosEl.setAttribute('data-column-id', column.id);
+        todosEl.setAttribute('data-board-id', board.id);
+
+        // Drop zone events
+        todosEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            todosEl.addClass('drag-over');
+        });
+        todosEl.addEventListener('dragleave', () => {
+            todosEl.removeClass('drag-over');
+        });
+        todosEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            todosEl.removeClass('drag-over');
+            if (this.draggedTodoId && this.boardEngine) {
+                this.boardEngine.assignTodoToColumn(board.id, this.draggedTodoId, column.id);
+                this.onSettingsChange();
+            }
+        });
+
+        // Get todos for this column
+        const todos = this.boardEngine!.getTodosForColumn(board.id, column.id);
+        const filteredTodos = this.currentFilter
+            ? todos.filter(t => t.text.toLowerCase().includes(this.currentFilter.toLowerCase()))
+            : todos;
+
+        headerEl.createSpan({ text: ` (${filteredTodos.length})`, cls: 'taskweaver-group-count' });
+
+        for (const todo of filteredTodos) {
+            this.renderTodoItem(todo, todosEl, board);
+        }
+    }
+
+    private renderTodoItem(todo: TodoItem, container: HTMLElement, board?: Board): void {
+        const item = container.createDiv({ cls: 'taskweaver-item' });
         item.setAttribute('data-id', todo.id);
         item.setAttribute('draggable', 'true');
 
@@ -113,13 +222,18 @@ export class TodoView extends ItemView {
         if (this.duplicateIds.has(todo.id)) {
             item.addClass('is-duplicate');
         }
-        if (todo.pinned) {
+
+        // Check pinned status
+        const isPinned = board
+            ? this.boardEngine?.isBoardPinned(board.id, todo.id)
+            : todo.pinned;
+        if (isPinned) {
             item.addClass('is-pinned');
         }
 
         // Drag handle
         const handle = item.createDiv({ cls: 'taskweaver-drag-handle' });
-        handle.innerHTML = todo.pinned ? '📌' : '⋮⋮';
+        handle.innerHTML = isPinned ? '📌' : '⋮⋮';
 
         // Checkbox
         const checkbox = item.createEl('input', { type: 'checkbox', cls: 'taskweaver-checkbox' });
@@ -150,13 +264,13 @@ export class TodoView extends ItemView {
         }
 
         // Drag events
-        item.addEventListener('dragstart', (e) => this.onDragStart(e, item));
+        item.addEventListener('dragstart', (e) => this.onDragStart(e, item, todo.id));
         item.addEventListener('dragend', () => this.onDragEnd());
         item.addEventListener('dragover', (e) => this.onDragOver(e, item));
         item.addEventListener('drop', (e) => this.onDrop(e, item));
 
         // Context menu
-        item.addEventListener('contextmenu', (e) => this.showContextMenu(e, todo));
+        item.addEventListener('contextmenu', (e) => this.showContextMenu(e, todo, board));
     }
 
     private async openFile(todo: TodoItem): Promise<void> {
@@ -164,7 +278,6 @@ export class TodoView extends ItemView {
         if (file instanceof TFile) {
             const leaf = this.app.workspace.getLeaf(false);
             await leaf.openFile(file);
-            // Scroll to line
             const view = leaf.view;
             if (view.getViewType() === 'markdown') {
                 const editor = (view as any).editor;
@@ -177,12 +290,13 @@ export class TodoView extends ItemView {
         }
     }
 
-    private onDragStart(e: DragEvent, item: HTMLElement): void {
+    private onDragStart(e: DragEvent, item: HTMLElement, todoId: string): void {
         this.draggedItem = item;
+        this.draggedTodoId = todoId;
         item.addClass('is-dragging');
         if (e.dataTransfer) {
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', item.getAttribute('data-id') || '');
+            e.dataTransfer.setData('text/plain', todoId);
         }
     }
 
@@ -190,8 +304,8 @@ export class TodoView extends ItemView {
         if (this.draggedItem) {
             this.draggedItem.removeClass('is-dragging');
             this.draggedItem = null;
+            this.draggedTodoId = null;
         }
-        // Remove all drag-over classes
         this.listEl.querySelectorAll('.drag-over').forEach(el => el.removeClass('drag-over'));
     }
 
@@ -200,10 +314,7 @@ export class TodoView extends ItemView {
         if (e.dataTransfer) {
             e.dataTransfer.dropEffect = 'move';
         }
-
-        // Remove previous drag-over classes
         this.listEl.querySelectorAll('.drag-over').forEach(el => el.removeClass('drag-over'));
-
         if (item !== this.draggedItem) {
             item.addClass('drag-over');
         }
@@ -211,33 +322,32 @@ export class TodoView extends ItemView {
 
     private onDrop(e: DragEvent, targetItem: HTMLElement): void {
         e.preventDefault();
-
         if (!this.draggedItem || targetItem === this.draggedItem) return;
 
-        // Get all item IDs in new order
-        const items = Array.from(this.listEl.querySelectorAll('.taskweaver-item'));
-        const draggedIndex = items.indexOf(this.draggedItem);
-        const targetIndex = items.indexOf(targetItem);
+        // Reorder in flat list mode
+        if (this.viewMode === 'list') {
+            const items = Array.from(this.listEl.querySelectorAll('.taskweaver-item'));
+            const draggedIndex = items.indexOf(this.draggedItem);
+            const targetIndex = items.indexOf(targetItem);
 
-        // Reorder in DOM
-        if (draggedIndex < targetIndex) {
-            targetItem.after(this.draggedItem);
-        } else {
-            targetItem.before(this.draggedItem);
+            if (draggedIndex < targetIndex) {
+                targetItem.after(this.draggedItem);
+            } else {
+                targetItem.before(this.draggedItem);
+            }
+
+            const newOrder = Array.from(this.listEl.querySelectorAll('.taskweaver-item'))
+                .map(el => el.getAttribute('data-id'))
+                .filter((id): id is string => id !== null);
+
+            this.engine.updatePriorities(newOrder);
+            this.onSettingsChange();
         }
-
-        // Update engine priorities
-        const newOrder = Array.from(this.listEl.querySelectorAll('.taskweaver-item'))
-            .map(el => el.getAttribute('data-id'))
-            .filter((id): id is string => id !== null);
-
-        this.engine.updatePriorities(newOrder);
-        this.onSettingsChange();
 
         targetItem.removeClass('drag-over');
     }
 
-    private showContextMenu(e: MouseEvent, todo: TodoItem): void {
+    private showContextMenu(e: MouseEvent, todo: TodoItem, board?: Board): void {
         e.preventDefault();
         const menu = new Menu();
 
@@ -255,6 +365,21 @@ export class TodoView extends ItemView {
 
         menu.addSeparator();
 
+        // Board column options
+        if (this.boardEngine && board) {
+            for (const column of board.columns) {
+                menu.addItem((item) => {
+                    item.setTitle(`Move to ${column.name}`)
+                        .setIcon('arrow-right')
+                        .onClick(() => {
+                            this.boardEngine!.assignTodoToColumn(board.id, todo.id, column.id);
+                            this.onSettingsChange();
+                        });
+                });
+            }
+            menu.addSeparator();
+        }
+
         menu.addItem((item) => {
             item.setTitle(todo.completed ? 'Mark incomplete' : 'Mark complete')
                 .setIcon(todo.completed ? 'square' : 'check-square')
@@ -263,14 +388,27 @@ export class TodoView extends ItemView {
 
         menu.addSeparator();
 
-        menu.addItem((item) => {
-            item.setTitle(todo.pinned ? 'Unpin' : 'Pin to top')
-                .setIcon('pin')
-                .onClick(() => {
-                    this.engine.togglePin(todo.id);
-                    this.onSettingsChange();
-                });
-        });
+        // Pin options
+        if (board && this.boardEngine) {
+            const isPinned = this.boardEngine.isBoardPinned(board.id, todo.id);
+            menu.addItem((item) => {
+                item.setTitle(isPinned ? 'Unpin from board' : 'Pin in board')
+                    .setIcon('pin')
+                    .onClick(() => {
+                        this.boardEngine!.toggleBoardPin(board.id, todo.id);
+                        this.onSettingsChange();
+                    });
+            });
+        } else {
+            menu.addItem((item) => {
+                item.setTitle(todo.pinned ? 'Unpin' : 'Pin to top')
+                    .setIcon('pin')
+                    .onClick(() => {
+                        this.engine.togglePin(todo.id);
+                        this.onSettingsChange();
+                    });
+            });
+        }
 
         menu.showAtMouseEvent(e);
     }
@@ -282,7 +420,7 @@ export class TodoView extends ItemView {
 
         const menu = new Menu();
 
-        for (const file of files.slice(0, 20)) { // Limit to 20 files
+        for (const file of files.slice(0, 20)) {
             menu.addItem((item) => {
                 item.setTitle(file.path)
                     .onClick(async () => {
@@ -301,7 +439,7 @@ export class TodoView extends ItemView {
             });
         }
 
-        menu.showAtPosition({ x: 0, y: 0 }); // Will be positioned by Obsidian
+        menu.showAtPosition({ x: 0, y: 0 });
     }
 
     async onClose(): Promise<void> {

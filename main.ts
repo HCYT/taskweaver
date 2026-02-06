@@ -1,9 +1,11 @@
 import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TodoEngine, TodoEngineSettings } from './src/TodoEngine';
 import { TodoView, VIEW_TYPE_TODO } from './src/TodoView';
+import { BoardEngine, BoardSettings } from './src/BoardEngine';
+import { BoardView, VIEW_TYPE_BOARD } from './src/BoardView';
 
 interface TaskweaverSettings extends TodoEngineSettings {
-    // Extend if needed
+    boardSettings: BoardSettings;
 }
 
 const DEFAULT_SETTINGS: TaskweaverSettings = {
@@ -11,35 +13,56 @@ const DEFAULT_SETTINGS: TaskweaverSettings = {
     hideCompleted: true,
     excludeFolders: [],
     pinnedIds: [],
+    boardSettings: {
+        boards: [],
+        activeBoardId: null,
+    },
 };
 
 export default class TaskweaverPlugin extends Plugin {
     settings: TaskweaverSettings;
     engine: TodoEngine;
+    boardEngine: BoardEngine;
 
     async onload(): Promise<void> {
         await this.loadSettings();
 
-        // Initialize engine
+        // Initialize engines
         this.engine = new TodoEngine(
             this.app.vault,
             this.app.metadataCache,
             this.settings
         );
 
-        // Register view
-        this.registerView(VIEW_TYPE_TODO, (leaf) => new TodoView(leaf, this.engine, () => this.saveSettings()));
+        this.boardEngine = new BoardEngine(
+            this.settings.boardSettings,
+            this.engine
+        );
 
-        // Add ribbon icon
+        // Register views
+        this.registerView(VIEW_TYPE_TODO, (leaf) => new TodoView(leaf, this.engine, () => this.saveSettings(), this.boardEngine));
+        this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this.engine, this.boardEngine, () => this.saveSettings()));
+
+        // Add ribbon icons
         this.addRibbonIcon('check-square', 'Open All Todo', () => {
-            this.activateView();
+            this.activateSidebarView(VIEW_TYPE_TODO);
         });
 
-        // Add command
+        this.addRibbonIcon('layout-grid', 'Open Kanban Board', () => {
+            this.activateMainView(VIEW_TYPE_BOARD);
+        });
+
+        // Add commands
         this.addCommand({
             id: 'open-taskweaver-view',
             name: 'Open Taskweaver sidebar',
-            callback: () => this.activateView(),
+            callback: () => this.activateSidebarView(VIEW_TYPE_TODO),
+        });
+
+        this.addCommand({
+            id: 'open-taskweaver-board',
+            name: 'Open Kanban board',
+            callback: () => this.activateMainView(VIEW_TYPE_BOARD),
         });
 
         this.addCommand({
@@ -63,11 +86,11 @@ export default class TaskweaverPlugin extends Plugin {
         this.engine.destroy();
     }
 
-    async activateView(): Promise<void> {
+    async activateSidebarView(viewType: string): Promise<void> {
         const { workspace } = this.app;
 
         let leaf: WorkspaceLeaf | null = null;
-        const leaves = workspace.getLeavesOfType(VIEW_TYPE_TODO);
+        const leaves = workspace.getLeavesOfType(viewType);
 
         if (leaves.length > 0) {
             leaf = leaves[0] ?? null;
@@ -75,7 +98,28 @@ export default class TaskweaverPlugin extends Plugin {
             const rightLeaf = workspace.getRightLeaf(false);
             if (rightLeaf) {
                 leaf = rightLeaf;
-                await leaf.setViewState({ type: VIEW_TYPE_TODO, active: true });
+                await leaf.setViewState({ type: viewType, active: true });
+            }
+        }
+
+        if (leaf) {
+            workspace.revealLeaf(leaf);
+        }
+    }
+
+    async activateMainView(viewType: string): Promise<void> {
+        const { workspace } = this.app;
+
+        let leaf: WorkspaceLeaf | null = null;
+        const leaves = workspace.getLeavesOfType(viewType);
+
+        if (leaves.length > 0) {
+            leaf = leaves[0] ?? null;
+        } else {
+            // Open in main content area (like a normal document)
+            leaf = workspace.getLeaf('tab');
+            if (leaf) {
+                await leaf.setViewState({ type: viewType, active: true });
             }
         }
 
@@ -85,7 +129,12 @@ export default class TaskweaverPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        // Ensure boardSettings exists
+        if (!this.settings.boardSettings) {
+            this.settings.boardSettings = { boards: [], activeBoardId: null };
+        }
     }
 
     async saveSettings(): Promise<void> {
