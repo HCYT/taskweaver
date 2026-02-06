@@ -140,7 +140,8 @@ export class TodoEngine {
         // Remove existing todos from this file
         this.removeTodosFromFile(file.path);
 
-        const content = await this.vault.cachedRead(file);
+        // Use vault.read (not cachedRead) for fresh content
+        const content = await this.vault.read(file);
         const lines = content.split('\n');
 
         // Regex for markdown todo items: - [ ] or - [x] or * [ ] or * [x]

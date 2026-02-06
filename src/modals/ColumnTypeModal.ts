@@ -1,5 +1,6 @@
 import { App, Modal, Setting } from 'obsidian';
 import { ColumnType, ColumnTypeConfig } from '../engines/BoardEngine';
+import { getColumnTypeDescription } from '../utils/ColumnTypeUtils';
 
 export class ColumnTypeModal extends Modal {
     private columnName: string;
@@ -112,21 +113,9 @@ export class ColumnTypeModal extends Modal {
 
             default:
                 configEl.createEl('p', {
-                    text: this.getTypeDescription(this.currentType),
+                    text: getColumnTypeDescription(this.currentType),
                     cls: 'setting-item-description'
                 });
-        }
-    }
-
-    private getTypeDescription(type: ColumnType): string {
-        switch (type) {
-            case 'manual': return 'Tasks are assigned by dragging or from context menu.';
-            case 'completed': return 'Automatically shows all completed tasks.';
-            case 'undated': return 'Shows tasks without a due date.';
-            case 'overdue': return 'Shows tasks with past due dates.';
-            case 'dated': return 'Configure the date range above.';
-            case 'namedTag': return 'Configure the tag above.';
-            default: return '';
         }
     }
 

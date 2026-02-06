@@ -1,12 +1,15 @@
-import { ItemView, WorkspaceLeaf, Menu, TFile, Modal, App, Setting } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu, TFile } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
-import { BoardEngine, Board, Column, ColumnType, ColumnTypeConfig } from '../engines/BoardEngine';
+import { BoardEngine, Board, Column, ColumnType } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
 import { ColumnTypeModal } from '../modals/ColumnTypeModal';
 import { BoardSettingsModal } from '../modals/BoardSettingsModal';
+import { InputModal } from '../modals/InputModal';
 import { FilterPopover } from '../components/FilterPopover';
 import { FilterState, DEFAULT_FILTER_STATE } from '../utils/FilterState';
 import { filterTodos } from '../utils/TodoFilterer';
+import { getDateStatusClass, formatDateRelative } from '../utils/DateUtils';
+import { getColumnTypeLabel } from '../utils/ColumnTypeUtils';
 
 export const VIEW_TYPE_BOARD = 'taskweaver-board-view';
 
@@ -350,7 +353,7 @@ export class BoardView extends ItemView {
 
             // Column type configuration
             menu.addItem(item => {
-                const typeLabel = column.type ? `Type: ${this.getColumnTypeLabel(column.type)}` : 'Configure Type';
+                const typeLabel = column.type ? `Type: ${getColumnTypeLabel(column.type)}` : 'Configure Type';
                 item.setTitle(typeLabel)
                     .setIcon('settings-2')
                     .onClick(() => {
@@ -609,44 +612,13 @@ export class BoardView extends ItemView {
         });
     }
 
-    private getColumnTypeLabel(type: ColumnType): string {
-        switch (type) {
-            case 'manual': return '📝 Manual';
-            case 'completed': return '✅ Completed';
-            case 'undated': return '📭 No Date';
-            case 'overdue': return '🔴 Overdue';
-            case 'dated': return '📅 Dated';
-            case 'namedTag': return '🏷️ Tag';
-            default: return type;
-        }
-    }
-
+    // Delegate to shared utilities
     private getDateStatus(dateStr: string): string {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dueDate = new Date(dateStr);
-        dueDate.setHours(0, 0, 0, 0);
-        const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) return 'is-overdue';
-        if (diffDays === 0) return 'is-today';
-        if (diffDays <= 3) return 'is-soon';
-        return '';
+        return getDateStatusClass(dateStr);
     }
 
     private formatDate(dateStr: string): string {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dueDate = new Date(dateStr);
-        dueDate.setHours(0, 0, 0, 0);
-        const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) return '📅 Today';
-        if (diffDays === 1) return '📅 Tomorrow';
-        if (diffDays === -1) return '📅 Yesterday';
-        if (diffDays < 0) return `📅 ${Math.abs(diffDays)}d ago`;
-        if (diffDays <= 7) return `📅 In ${diffDays}d`;
-        return `📅 ${dateStr.slice(5)}`; // MM-DD
+        return '📅 ' + formatDateRelative(dateStr);
     }
 
     private renderArchiveColumn(container: HTMLElement, board: Board, archivedTodos: TodoItem[]): void {
@@ -898,62 +870,5 @@ export class BoardView extends ItemView {
 
     async onClose(): Promise<void> {
         // Cleanup
-    }
-}
-
-// Input Modal for Obsidian
-class InputModal extends Modal {
-    private title: string;
-    private label: string;
-    private defaultValue: string;
-    private onSubmit: (value: string) => void;
-    private inputEl: HTMLInputElement;
-
-    constructor(app: App, title: string, label: string, defaultValue: string, onSubmit: (value: string) => void) {
-        super(app);
-        this.title = title;
-        this.label = label;
-        this.defaultValue = defaultValue;
-        this.onSubmit = onSubmit;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.createEl('h3', { text: this.title });
-
-        new Setting(contentEl)
-            .setName(this.label)
-            .addText(text => {
-                this.inputEl = text.inputEl;
-                text.setValue(this.defaultValue);
-                text.inputEl.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        this.submit();
-                    }
-                });
-            });
-
-        new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('Create')
-                .setCta()
-                .onClick(() => this.submit()))
-            .addButton(btn => btn
-                .setButtonText('Cancel')
-                .onClick(() => this.close()));
-
-        // Focus input
-        setTimeout(() => this.inputEl?.focus(), 50);
-    }
-
-    private submit(): void {
-        const value = this.inputEl?.value || '';
-        this.close();
-        this.onSubmit(value);
-    }
-
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
     }
 }
