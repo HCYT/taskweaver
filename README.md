@@ -8,29 +8,35 @@ Weave your scattered TODOs into one unified view. A Kanban-style task management
 
 ## Features
 
-### 📋 Sidebar TODO List
+### Sidebar TODO List
 - View all TODOs from your entire vault in one place
 - Quick navigation - click to jump to source file and line
 - Search and filter TODOs instantly
+- Expandable sub-tasks with progress tracking
+- Priority colors (High/Medium/Low)
 
-### 📌 Kanban Board View
-- Multiple columns with drag & drop support
+### Kanban Board View  
+- Multiple boards with customizable columns
+- Drag & drop between columns
 - Column types: Manual, Completed, Dated, Overdue, Undated, By Tag
-- Sub-task expansion with progress tracking
+- Work-in-progress (WIP) limits per column
 - Quick add tasks from column footer
 
-### 🎯 Task Management
-- Duplicate detection (marked with `DUP`)
-- Cross-file move via context menu
+### Task Management
+- Sub-task expansion with checkboxes
+- Due date badges with status (Overdue/Today/Soon)
+- Tag display and editing
 - Priority levels (High/Medium/Low)
-- Tag editing in task modal
+- Pin important tasks to top
 - Archive completed tasks
+- Cross-file move via context menu
+- Duplicate detection (marked with `DUP`)
 
-### ⚙️ Settings
+### Settings
 - Hide completed tasks
-- Exclude specific folders
-- Work-in-progress limits per column
+- Include/exclude specific folders
 - Auto-hide empty columns
+- Board-specific configurations
 
 ## Installation
 
@@ -40,18 +46,34 @@ Weave your scattered TODOs into one unified view. A Kanban-style task management
 3. Click Install, then Enable
 
 ### Manual Installation
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/YOUR_USERNAME/taskweaver/releases)
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/user/taskweaver/releases)
 2. Create folder: `YOUR_VAULT/.obsidian/plugins/taskweaver/`
 3. Copy the downloaded files into this folder
 4. Reload Obsidian and enable the plugin
 
 ## Usage
 
-1. Click the ✅ icon in the left ribbon
-2. Create a board from the selector dropdown
-3. Drag tasks between columns to organize
-4. Right-click cards for more options
-5. Click ⚙️ to configure board settings
+1. Click the checkmark icon in the left ribbon to open TaskWeaver
+2. Use the dropdown to switch between List View and Board views
+3. Right-click tasks for context menu options:
+   - Open file / Move to file
+   - Edit task / Mark complete
+   - Set priority (High/Medium/Low)
+   - Pin/Unpin / Archive
+4. Click the settings icon on boards to configure columns
+
+## Task Syntax
+
+TaskWeaver recognizes standard Obsidian task syntax:
+
+```markdown
+- [ ] Basic task
+- [x] Completed task
+- [ ] Task with due date 📅 2024-02-15
+- [ ] Task with #tags
+  - [ ] Sub-task 1
+  - [ ] Sub-task 2
+```
 
 ## Development
 
