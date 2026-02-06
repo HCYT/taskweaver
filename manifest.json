@@ -1,9 +1,9 @@
 {
   "id": "taskweaver",
-  "name": "Taskweaver",
-  "version": "1.0.0",
+  "name": "TaskWeaver",
+  "version": "1.0.1",
   "minAppVersion": "1.0.0",
-  "description": "Unified TODO management: sidebar list, drag-and-drop reorder, duplicate detection, file linking, cross-file move, and search.",
-  "author": "cyh",
+  "description": "Kanban-style task management with sidebar TODO list, drag-and-drop, sub-tasks, and priority levels.",
+  "author": "HCYT",
   "isDesktopOnly": false
 }

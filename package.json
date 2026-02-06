@@ -1,6 +1,6 @@
 {
     "name": "taskweaver",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Weave your scattered TODOs into one unified view",
     "main": "main.js",
     "scripts": {
