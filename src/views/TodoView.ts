@@ -120,7 +120,7 @@ export class TodoView extends ItemView {
         const select = selectorWrap.createEl('select', { cls: 'taskweaver-view-select' });
 
         // List option
-        const listOption = select.createEl('option', { text: '📋 List View', value: 'list' });
+        const listOption = select.createEl('option', { text: 'List View', value: 'list' });
         if (this.viewMode === 'list') listOption.selected = true;
 
         // Board options
@@ -128,7 +128,7 @@ export class TodoView extends ItemView {
             const boards = this.boardEngine.getAllBoards();
             for (const board of boards) {
                 const option = select.createEl('option', {
-                    text: `📊 ${board.name}`,
+                    text: board.name,
                     value: board.id,
                 });
                 if (this.viewMode === board.id) option.selected = true;
