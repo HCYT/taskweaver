@@ -201,7 +201,7 @@ class TaskweaverSettingTab extends PluginSettingTab {
             .setName('Exclude folders')
             .setDesc('Comma-separated list of folder paths to exclude from scanning (e.g., "templates, archive/old").')
             .addTextArea(text => text
-                .setPlaceholder('e.g. templates, archive')
+                .setPlaceholder('')
                 .setValue(this.plugin.settings.excludeFolders.join(', '))
                 .onChange(async (value) => {
                     this.plugin.settings.excludeFolders = value
