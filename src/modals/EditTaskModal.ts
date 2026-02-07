@@ -166,8 +166,7 @@ export class EditTaskModal extends Modal {
         const deleteBtn = actions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
         deleteBtn.addEventListener('click', () => this.confirmDelete());
 
-        const spacer = actions.createDiv({ cls: 'spacer' });
-        spacer.style.flex = '1';
+        const spacer = actions.createDiv({ cls: 'taskweaver-spacer' });
 
         const cancelBtn = actions.createEl('button', { text: 'Cancel' });
         cancelBtn.addEventListener('click', () => this.close());

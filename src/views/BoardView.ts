@@ -457,19 +457,19 @@ export class BoardView extends ItemView {
                 cls: 'taskweaver-quick-add-input'
             });
 
-            quickAddInput.addEventListener('keydown', async (e) => {
+            quickAddInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && quickAddInput.value.trim()) {
                     const taskText = quickAddInput.value.trim();
-                    await this.quickAddTask(taskText, board.id, column.id);
+                    void this.quickAddTask(taskText, board.id, column.id);
                     quickAddInput.value = '';
                 }
             });
 
             // Also add when input loses focus with content
-            quickAddInput.addEventListener('blur', async () => {
+            quickAddInput.addEventListener('blur', () => {
                 if (quickAddInput.value.trim()) {
                     const taskText = quickAddInput.value.trim();
-                    await this.quickAddTask(taskText, board.id, column.id);
+                    void this.quickAddTask(taskText, board.id, column.id);
                     quickAddInput.value = '';
                 }
             });
@@ -503,14 +503,14 @@ export class BoardView extends ItemView {
         // Checkbox
         const checkbox = header.createEl('input', { type: 'checkbox', cls: 'taskweaver-card-checkbox' });
         checkbox.checked = todo.completed;
-        checkbox.addEventListener('change', async () => {
-            await this.todoEngine.toggleTodo(todo.id);
+        checkbox.addEventListener('change', () => {
+            void this.todoEngine.toggleTodo(todo.id);
         });
 
         // Text (strip date/tag syntax for cleaner display)
         const cleanText = todo.text
             .replace(/(?:📅|📆|due::?)\d{4}-\d{2}-\d{2}/g, '')
-            .replace(/#[\w\-\/]+/g, '')
+            .replace(/#[\w\-/]+/g, '')
             .trim();
         const textEl = header.createDiv({ cls: 'taskweaver-card-text' });
         textEl.setText(cleanText || todo.text);
@@ -560,9 +560,8 @@ export class BoardView extends ItemView {
                 const subItem = subTasksList.createDiv({ cls: 'taskweaver-subtask-item' });
                 const checkbox = subItem.createEl('input', { type: 'checkbox' });
                 checkbox.checked = subTask.completed;
-                checkbox.addEventListener('change', async () => {
-                    await this.todoEngine.toggleTodo(subTask.id);
-                    this.render();
+                checkbox.addEventListener('change', () => {
+                    void this.todoEngine.toggleTodo(subTask.id).then(() => this.render());
                 });
                 subItem.createSpan({
                     text: subTask.text.replace(/^[-*]\s*\[.\]\s*/, '').substring(0, 50),
@@ -708,9 +707,8 @@ export class BoardView extends ItemView {
             item.setTitle('Edit task')
                 .setIcon('pencil')
                 .onClick(() => {
-                    new EditTaskModal(this.app, this.todoEngine, todo, async () => {
-                        await this.todoEngine.initialize();
-                        this.onSettingsChange();
+                    new EditTaskModal(this.app, this.todoEngine, todo, () => {
+                        void this.todoEngine.initialize().then(() => this.onSettingsChange());
                     }).open();
                 });
         });
@@ -791,7 +789,7 @@ export class BoardView extends ItemView {
         menu.showAtMouseEvent(e);
     }
 
-    private async showMoveDialog(todo: TodoItem): Promise<void> {
+    private showMoveDialog(todo: TodoItem): void {
         const files = this.app.vault.getMarkdownFiles()
             .filter(f => f.path !== todo.filePath)
             .sort((a, b) => a.path.localeCompare(b.path));

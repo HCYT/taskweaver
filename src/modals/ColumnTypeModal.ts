@@ -85,7 +85,7 @@ export class ColumnTypeModal extends Modal {
                                 this.currentConfig.dateFrom = parseInt(val) || 0;
                             });
                         text.inputEl.type = 'number';
-                        text.inputEl.style.width = '60px';
+                        text.inputEl.addClass('taskweaver-number-narrow');
                     })
                     .addText(text => {
                         text.setPlaceholder('To (e.g., 7)')
@@ -94,7 +94,7 @@ export class ColumnTypeModal extends Modal {
                                 this.currentConfig.dateTo = parseInt(val) || 7;
                             });
                         text.inputEl.type = 'number';
-                        text.inputEl.style.width = '60px';
+                        text.inputEl.addClass('taskweaver-number-narrow');
                     });
                 break;
 

@@ -1531,3 +1531,12 @@
 .taskweaver-item.priority-low {
   border-left: 3px solid var(--text-muted);
 }
+
+/* Utility classes */
+.taskweaver-spacer {
+  flex: 1;
+}
+
+.taskweaver-number-narrow {
+  width: 60px;
+}

@@ -49,11 +49,11 @@ export default class TaskweaverPlugin extends Plugin {
         this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this.engine, this.boardEngine, () => this.saveSettings()));
 
         // Add ribbon icons
-        this.addRibbonIcon('check-square', 'Open All Todo', () => {
+        this.addRibbonIcon('check-square', 'Open todo list', () => {
             this.activateSidebarView(VIEW_TYPE_TODO);
         });
 
-        this.addRibbonIcon('layout-grid', 'Open Kanban Board', () => {
+        this.addRibbonIcon('layout-grid', 'Open kanban board', () => {
             this.activateMainView(VIEW_TYPE_BOARD);
         });
 
@@ -73,8 +73,8 @@ export default class TaskweaverPlugin extends Plugin {
         this.addCommand({
             id: 'refresh-list',
             name: 'Refresh task list',
-            callback: async () => {
-                await this.engine.initialize();
+            callback: () => {
+                void this.engine.initialize();
             },
         });
 
@@ -83,18 +83,16 @@ export default class TaskweaverPlugin extends Plugin {
             id: 'add-new-task',
             name: 'Add new task',
             callback: () => {
-                new AddTaskModal(this.app, this.engine, async () => {
-                    await this.engine.initialize();
-                    this.saveSettings();
+                new AddTaskModal(this.app, this.engine, () => {
+                    void this.engine.initialize().then(() => this.saveSettings());
                 }).open();
             },
         });
 
         // Add ribbon icon for quick add
-        this.addRibbonIcon('plus-circle', 'Add New Task', () => {
-            new AddTaskModal(this.app, this.engine, async () => {
-                await this.engine.initialize();
-                this.saveSettings();
+        this.addRibbonIcon('plus-circle', 'Add new task', () => {
+            new AddTaskModal(this.app, this.engine, () => {
+                void this.engine.initialize().then(() => this.saveSettings());
             }).open();
         });
 
@@ -185,7 +183,7 @@ class TaskweaverSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        new Setting(containerEl).setName('TaskWeaver settings').setHeading();
+        new Setting(containerEl).setName('General').setHeading();
 
         // Hide completed toggle
         new Setting(containerEl)

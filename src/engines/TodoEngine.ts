@@ -183,7 +183,7 @@ export class TodoEngine {
                 const dueDate = dueDateMatch ? dueDateMatch[1] ?? null : null;
 
                 // Extract tags (#tag format)
-                const tagMatches = text.match(/#[\w\-\/]+/g);
+                const tagMatches = text.match(/#[\w\-/]+/g);
                 const tags = tagMatches ? tagMatches : [];
 
                 const todo: TodoItem = {

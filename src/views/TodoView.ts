@@ -5,7 +5,7 @@ import { EditTaskModal } from '../modals/EditTaskModal';
 
 export const VIEW_TYPE_TODO = 'taskweaver-view';
 
-type ViewMode = 'list' | string; // 'list' or board ID
+type ViewMode = string; // 'list' for list view or board ID for board view
 
 export class TodoView extends ItemView {
     private engine: TodoEngine;
@@ -31,7 +31,7 @@ export class TodoView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'All Todo';
+        return 'Todo list';
     }
 
     getIcon(): string {
@@ -102,7 +102,7 @@ export class TodoView extends ItemView {
         }
 
         select.addEventListener('change', () => {
-            this.viewMode = select.value as ViewMode;
+            this.viewMode = select.value;
             this.renderList();
         });
     }
@@ -261,14 +261,14 @@ export class TodoView extends ItemView {
         // Checkbox
         const checkbox = item.createEl('input', { type: 'checkbox', cls: 'taskweaver-checkbox' });
         checkbox.checked = todo.completed;
-        checkbox.addEventListener('change', async () => {
-            await this.engine.toggleTodo(todo.id);
+        checkbox.addEventListener('change', () => {
+            void this.engine.toggleTodo(todo.id);
         });
 
         // Text (clean like BoardView)
         const cleanText = todo.text
             .replace(/(?:📅|📆|due::?)\d{4}-\d{2}-\d{2}/g, '')
-            .replace(/#[\w\-\/]+/g, '')
+            .replace(/#[\w\-/]+/g, '')
             .trim();
         const text = item.createDiv({ cls: 'taskweaver-text' });
         text.setText(cleanText || todo.text);
@@ -317,9 +317,8 @@ export class TodoView extends ItemView {
                 const subItem = subTasksList.createDiv({ cls: 'taskweaver-subtask-item' });
                 const checkbox = subItem.createEl('input', { type: 'checkbox' });
                 checkbox.checked = subTask.completed;
-                checkbox.addEventListener('change', async () => {
-                    await this.engine.toggleTodo(subTask.id);
-                    this.renderList();
+                checkbox.addEventListener('change', () => {
+                    void this.engine.toggleTodo(subTask.id).then(() => this.renderList());
                 });
                 subItem.createSpan({
                     text: subTask.text.replace(/^[-*]\s*\[.\]\s*/, '').substring(0, 50),
@@ -340,9 +339,9 @@ export class TodoView extends ItemView {
         const fileName = todo.filePath.split('/').pop() || todo.filePath;
         link.setText(fileName);
         link.setAttribute('title', `${todo.filePath}:${todo.lineNumber}`);
-        link.addEventListener('click', async (e) => {
+        link.addEventListener('click', (e) => {
             e.stopPropagation();
-            await this.openFile(todo);
+            void this.openFile(todo);
         });
 
         // Duplicate badge
@@ -503,9 +502,8 @@ export class TodoView extends ItemView {
             item.setTitle('Edit task')
                 .setIcon('pencil')
                 .onClick(() => {
-                    new EditTaskModal(this.app, this.engine, todo, async () => {
-                        await this.engine.initialize();
-                        this.onSettingsChange();
+                    new EditTaskModal(this.app, this.engine, todo, () => {
+                        void this.engine.initialize().then(() => this.onSettingsChange());
                     }).open();
                 });
         });
@@ -643,7 +641,7 @@ export class TodoView extends ItemView {
         menu.showAtMouseEvent(e);
     }
 
-    private async showMoveDialog(todo: TodoItem): Promise<void> {
+    private showMoveDialog(todo: TodoItem): void {
         const files = this.app.vault.getMarkdownFiles()
             .filter(f => f.path !== todo.filePath)
             .sort((a, b) => a.path.localeCompare(b.path));
