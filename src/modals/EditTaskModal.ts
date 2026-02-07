@@ -165,7 +165,7 @@ export class EditTaskModal extends Modal {
         const actions = contentEl.createDiv('taskweaver-modal-actions');
 
         const deleteBtn = actions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
-        deleteBtn.addEventListener('click', () => this.confirmDelete());
+        deleteBtn.addEventListener('click', () => { void this.confirmDelete(); });
 
         actions.createDiv({ cls: 'taskweaver-spacer' });
 
@@ -173,7 +173,7 @@ export class EditTaskModal extends Modal {
         cancelBtn.addEventListener('click', () => this.close());
 
         const saveBtn = actions.createEl('button', { text: 'Save', cls: 'mod-cta' });
-        saveBtn.addEventListener('click', () => this.submit());
+        saveBtn.addEventListener('click', () => { void this.submit(); });
     }
 
     private async submit(): Promise<void> {

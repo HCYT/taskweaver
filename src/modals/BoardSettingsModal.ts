@@ -41,11 +41,11 @@ export class BoardSettingsModal extends Modal {
 
         // Add column button
         const addColumnBtn = contentEl.createEl('button', {
-            text: '+ Add Column',
+            text: '+ Add column',
             cls: 'mod-cta taskweaver-add-column-btn'
         });
         addColumnBtn.addEventListener('click', () => {
-            this.boardEngine.addColumn(this.board.id, 'New Column');
+            this.boardEngine.addColumn(this.board.id, 'New column');
             this.onSave();
             this.renderColumns(columnsContainer);
         });

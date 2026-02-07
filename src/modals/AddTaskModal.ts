@@ -48,7 +48,7 @@ export class AddTaskModal extends Modal {
                 const files = this.app.vault.getMarkdownFiles()
                     .sort((a, b) => b.stat.mtime - a.stat.mtime);
 
-                dropdown.addOption('', '-- Active file --');
+                dropdown.addOption('', '(Active file)');
 
                 for (const file of files.slice(0, 50)) {
                     dropdown.addOption(file.path, file.basename);
@@ -65,7 +65,7 @@ export class AddTaskModal extends Modal {
             .setName('Due date')
             .setDesc('Optional: set a due date')
             .addText(text => {
-                text.setPlaceholder('YYYY-MM-DD')
+                text.setPlaceholder('yyyy-mm-dd')
                     .onChange(value => { this.dueDate = value; });
                 text.inputEl.type = 'date';
             });

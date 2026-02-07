@@ -168,7 +168,7 @@ export class BoardView extends ItemView {
 
         // Add column button
         const addColumnBtn = columnsEl.createDiv({ cls: 'taskweaver-board-add-column' });
-        addColumnBtn.setText('+ Add column');
+        addColumnBtn.setText('+ add column');
         addColumnBtn.addEventListener('click', () => this.promptAddColumn(board.id));
     }
 
@@ -588,7 +588,7 @@ export class BoardView extends ItemView {
         const link = footer.createDiv({ cls: 'taskweaver-card-link' });
         const fileName = todo.filePath.split('/').pop() || todo.filePath;
         link.setText(fileName);
-        link.addEventListener('click', () => this.openFile(todo));
+        link.addEventListener('click', () => { void this.openFile(todo); });
 
         // Drag events
         card.addEventListener('dragstart', (e) => {
@@ -673,7 +673,7 @@ export class BoardView extends ItemView {
             const link = card.createDiv({ cls: 'taskweaver-card-link' });
             const fileName = todo.filePath.split('/').pop() || todo.filePath;
             link.setText(fileName);
-            link.addEventListener('click', () => this.openFile(todo));
+            link.addEventListener('click', () => { void this.openFile(todo); });
 
             // Context menu for unarchive
             card.addEventListener('contextmenu', (e) => {

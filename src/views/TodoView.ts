@@ -5,7 +5,7 @@ import { EditTaskModal } from '../modals/EditTaskModal';
 
 export const VIEW_TYPE_TODO = 'taskweaver-view';
 
-type ViewMode = 'list' | string; // 'list' for list view or board ID for board view
+type ViewMode = string; // 'list' for list view or board ID for board view
 
 export class TodoView extends ItemView {
     private engine: TodoEngine;

@@ -94,7 +94,7 @@ export class TodoEngine {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-        this.debounceTimer = setTimeout(() => this.processPendingUpdates(), this.DEBOUNCE_MS);
+        this.debounceTimer = setTimeout(() => { void this.processPendingUpdates(); }, this.DEBOUNCE_MS);
     }
 
     private async processPendingUpdates(): Promise<void> {
