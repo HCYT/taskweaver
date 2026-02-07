@@ -58,7 +58,7 @@ export class TodoEngine {
     }
 
     private setupFileWatcher(): void {
-        this.fileEventRef = this.vault.on('modify', async (file) => {
+        this.fileEventRef = this.vault.on('modify', (file) => {
             if (file instanceof TFile && file.extension === 'md') {
                 this.queueFileUpdate(file.path);
             }
@@ -71,13 +71,13 @@ export class TodoEngine {
             }
         });
 
-        this.vault.on('create', async (file) => {
+        this.vault.on('create', (file) => {
             if (file instanceof TFile && file.extension === 'md') {
                 this.queueFileUpdate(file.path);
             }
         });
 
-        this.vault.on('rename', async (file, oldPath) => {
+        this.vault.on('rename', (file, oldPath) => {
             if (file instanceof TFile && file.extension === 'md') {
                 this.removeTodosFromFile(oldPath);
                 this.queueFileUpdate(file.path);

@@ -258,11 +258,12 @@ export class BoardEngine {
                     return todo.tags?.includes(typeConfig.tag) || todo.text.includes(typeConfig.tag);
 
                 case 'manual':
-                default:
+                default: {
                     // Manual columns: exclude completed tasks, check manual assignment
                     if (todo.completed) return false;
                     const assignedColumn = board.todoAssignments[todo.id] ?? defaultColumnId;
                     return assignedColumn === columnId;
+                }
             }
         });
 

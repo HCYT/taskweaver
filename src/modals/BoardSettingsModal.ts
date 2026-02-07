@@ -1,6 +1,7 @@
 import { App, Modal, Setting, setIcon } from 'obsidian';
-import { Board, Column, BoardEngine, ColumnType } from '../engines/BoardEngine';
+import { Board, BoardEngine } from '../engines/BoardEngine';
 import { getColumnTypeIcon, getColumnTypeLabel } from '../utils/ColumnTypeUtils';
+import { ConfirmModal } from './ConfirmModal';
 
 export class BoardSettingsModal extends Modal {
     private board: Board;
@@ -99,11 +100,16 @@ export class BoardSettingsModal extends Modal {
             const deleteBtn = columnRow.createEl('button', { cls: 'taskweaver-column-delete' });
             setIcon(deleteBtn, 'trash-2');
             deleteBtn.addEventListener('click', () => {
-                if (confirm(`Delete column "${column.name}"?`)) {
-                    this.boardEngine.removeColumn(this.board.id, column.id);
-                    this.onSave();
-                    this.renderColumns(container);
-                }
+                new ConfirmModal(
+                    this.app,
+                    'Delete column',
+                    `Are you sure you want to delete column "${column.name}"?`,
+                    () => {
+                        this.boardEngine.removeColumn(this.board.id, column.id);
+                        this.onSave();
+                        this.renderColumns(container);
+                    }
+                ).open();
             });
         }
     }

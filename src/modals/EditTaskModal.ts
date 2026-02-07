@@ -1,6 +1,7 @@
-import { App, Modal, Notice, Setting } from 'obsidian';
+import { App, Modal, Notice, Setting, TFile } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
 import { DatePickerModal } from './DatePickerModal';
+import { ConfirmModal } from './ConfirmModal';
 
 export class EditTaskModal extends Modal {
     private todoEngine: TodoEngine;
@@ -29,7 +30,7 @@ export class EditTaskModal extends Modal {
         // Remove date markers, priority emojis, and tags
         return text
             .replace(/📅\s*\d{4}-\d{2}-\d{2}/g, '')
-            .replace(/[⏫🔼🔽]/g, '')
+            .replace(/[⏫🔼🔽]/gu, '')
             .replace(/#\w+/g, '')
             .trim();
     }
@@ -166,7 +167,7 @@ export class EditTaskModal extends Modal {
         const deleteBtn = actions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
         deleteBtn.addEventListener('click', () => this.confirmDelete());
 
-        const spacer = actions.createDiv({ cls: 'taskweaver-spacer' });
+        actions.createDiv({ cls: 'taskweaver-spacer' });
 
         const cancelBtn = actions.createEl('button', { text: 'Cancel' });
         cancelBtn.addEventListener('click', () => this.close());
@@ -197,8 +198,8 @@ export class EditTaskModal extends Modal {
         // Update in file
         try {
             const file = this.app.vault.getAbstractFileByPath(this.todo.filePath);
-            if (file) {
-                const content = await this.app.vault.read(file as any);
+            if (file instanceof TFile) {
+                const content = await this.app.vault.read(file);
                 const lines = content.split('\n');
                 const lineIndex = this.todo.lineNumber - 1;
 
@@ -207,7 +208,7 @@ export class EditTaskModal extends Modal {
                     const checkbox = this.completedState ? '- [x]' : '- [ ]';
                     lines[lineIndex] = `${checkbox} ${newTaskLine}`;
 
-                    await this.app.vault.modify(file as any, lines.join('\n'));
+                    await this.app.vault.modify(file, lines.join('\n'));
                     new Notice('Task updated');
                     this.close();
                     try {
@@ -218,25 +219,35 @@ export class EditTaskModal extends Modal {
                 }
             }
         } catch (error) {
-            new Notice('Failed to update task: ' + error);
+            new Notice('Failed to update task: ' + String(error));
         }
     }
 
     private async confirmDelete(): Promise<void> {
-        if (!confirm('Delete this task permanently?')) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+            new ConfirmModal(
+                this.app,
+                'Delete task',
+                'Are you sure you want to delete this task permanently?',
+                () => resolve(true),
+                () => resolve(false)
+            ).open();
+        });
+
+        if (!confirmed) {
             return;
         }
 
         try {
             const file = this.app.vault.getAbstractFileByPath(this.todo.filePath);
-            if (file) {
-                const content = await this.app.vault.read(file as any);
+            if (file instanceof TFile) {
+                const content = await this.app.vault.read(file);
                 const lines = content.split('\n');
                 const lineIndex = this.todo.lineNumber - 1;
 
                 if (lineIndex >= 0 && lineIndex < lines.length) {
                     lines.splice(lineIndex, 1);
-                    await this.app.vault.modify(file as any, lines.join('\n'));
+                    await this.app.vault.modify(file, lines.join('\n'));
                     new Notice('Task deleted');
                     this.close();
                     try {
@@ -247,7 +258,7 @@ export class EditTaskModal extends Modal {
                 }
             }
         } catch (error) {
-            new Notice('Failed to delete task: ' + error);
+            new Notice('Failed to delete task: ' + String(error));
         }
     }
 

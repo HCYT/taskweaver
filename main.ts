@@ -45,16 +45,16 @@ export default class TaskweaverPlugin extends Plugin {
         );
 
         // Register views
-        this.registerView(VIEW_TYPE_TODO, (leaf) => new TodoView(leaf, this.engine, () => this.saveSettings(), this.boardEngine));
-        this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this.engine, this.boardEngine, () => this.saveSettings()));
+        this.registerView(VIEW_TYPE_TODO, (leaf) => new TodoView(leaf, this.engine, () => { void this.saveSettings(); }, this.boardEngine));
+        this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this.engine, this.boardEngine, () => { void this.saveSettings(); }));
 
         // Add ribbon icons
         this.addRibbonIcon('check-square', 'Open todo list', () => {
-            this.activateSidebarView(VIEW_TYPE_TODO);
+            void this.activateSidebarView(VIEW_TYPE_TODO);
         });
 
         this.addRibbonIcon('layout-grid', 'Open kanban board', () => {
-            this.activateMainView(VIEW_TYPE_BOARD);
+            void this.activateMainView(VIEW_TYPE_BOARD);
         });
 
         // Add commands
@@ -132,7 +132,7 @@ export default class TaskweaverPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
         }
     }
 
@@ -153,7 +153,7 @@ export default class TaskweaverPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
         }
     }
 
@@ -183,7 +183,7 @@ class TaskweaverSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        new Setting(containerEl).setName('General').setHeading();
+        new Setting(containerEl).setName('Display settings').setHeading();
 
         // Hide completed toggle
         new Setting(containerEl)
@@ -201,7 +201,7 @@ class TaskweaverSettingTab extends PluginSettingTab {
             .setName('Exclude folders')
             .setDesc('Comma-separated list of folder paths to exclude from scanning (e.g., "templates, archive/old").')
             .addTextArea(text => text
-                .setPlaceholder('templates, archive')
+                .setPlaceholder('templates, archive...')
                 .setValue(this.plugin.settings.excludeFolders.join(', '))
                 .onChange(async (value) => {
                     this.plugin.settings.excludeFolders = value

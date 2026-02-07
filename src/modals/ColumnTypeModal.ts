@@ -37,11 +37,11 @@ export class ColumnTypeModal extends Modal {
             .addDropdown(dropdown => {
                 dropdown
                     .addOption('manual', 'Manual (drag & drop)')
-                    .addOption('completed', 'Completed Tasks')
-                    .addOption('undated', 'No Due Date')
+                    .addOption('completed', 'Completed tasks')
+                    .addOption('undated', 'No due date')
                     .addOption('overdue', 'Overdue')
-                    .addOption('dated', 'Date Range')
-                    .addOption('namedTag', 'By Tag')
+                    .addOption('dated', 'Date range')
+                    .addOption('namedTag', 'By tag')
                     .setValue(this.currentType)
                     .onChange((value) => {
                         this.currentType = value as ColumnType;
@@ -50,7 +50,6 @@ export class ColumnTypeModal extends Modal {
             });
 
         // Type-specific config container
-        const configContainer = contentEl.createDiv({ cls: 'taskweaver-type-config' });
         this.renderTypeConfig(contentEl);
 
         // Footer actions

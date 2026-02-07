@@ -35,7 +35,7 @@ export class AddTaskModal extends Modal {
                 text.inputEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        this.submit();
+                        void this.submit();
                     }
                 });
             });
@@ -63,7 +63,7 @@ export class AddTaskModal extends Modal {
         // Due date (optional)
         new Setting(contentEl)
             .setName('Due date')
-            .setDesc('Optional: Set a due date')
+            .setDesc('Optional: set a due date')
             .addText(text => {
                 text.setPlaceholder('YYYY-MM-DD')
                     .onChange(value => { this.dueDate = value; });
@@ -141,7 +141,7 @@ export class AddTaskModal extends Modal {
             this.close();
             this.onTaskAdded();
         } catch (error) {
-            new Notice('Failed to add task: ' + error);
+            new Notice('Failed to add task: ' + String(error));
         }
     }
 

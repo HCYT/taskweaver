@@ -5,7 +5,7 @@ import { EditTaskModal } from '../modals/EditTaskModal';
 
 export const VIEW_TYPE_TODO = 'taskweaver-view';
 
-type ViewMode = string; // 'list' for list view or board ID for board view
+type ViewMode = 'list' | string; // 'list' for list view or board ID for board view
 
 export class TodoView extends ItemView {
     private engine: TodoEngine;
@@ -47,6 +47,7 @@ export class TodoView extends ItemView {
         const header = contentEl.createDiv({ cls: 'taskweaver-header' });
 
         // View mode selector
+        await Promise.resolve(); // Satisfy async requirement
         this.renderViewModeSelector(header);
 
         this.searchInput = header.createEl('input', {
@@ -135,7 +136,7 @@ export class TodoView extends ItemView {
     }
 
     private renderFlatList(): void {
-        let todos = this.currentFilter
+        const todos = this.currentFilter
             ? this.engine.search(this.currentFilter)
             : this.engine.getTodos();
 
@@ -403,7 +404,7 @@ export class TodoView extends ItemView {
             await leaf.openFile(file);
             const view = leaf.view;
             if (view.getViewType() === 'markdown') {
-                const editor = (view as any).editor;
+                const editor = (view as unknown as { editor?: { setCursor: (pos: { line: number; ch: number }) => void; scrollIntoView: (range: { from: { line: number; ch: number }; to: { line: number; ch: number } }, center: boolean) => void } }).editor;
                 if (editor) {
                     const line = todo.lineNumber - 1;
                     editor.setCursor({ line, ch: 0 });

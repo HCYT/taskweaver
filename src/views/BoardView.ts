@@ -1,15 +1,16 @@
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
 import { TodoItem, TodoEngine } from '../engines/TodoEngine';
-import { BoardEngine, Board, Column, ColumnType } from '../engines/BoardEngine';
+import { BoardEngine, Board, Column } from '../engines/BoardEngine';
 import { EditTaskModal } from '../modals/EditTaskModal';
 import { ColumnTypeModal } from '../modals/ColumnTypeModal';
 import { BoardSettingsModal } from '../modals/BoardSettingsModal';
 import { InputModal } from '../modals/InputModal';
 import { FilterPopover } from '../components/FilterPopover';
+import { ConfirmModal } from '../modals/ConfirmModal';
 import { FilterState, DEFAULT_FILTER_STATE } from '../utils/FilterState';
 import { filterTodos } from '../utils/TodoFilterer';
 import { getDateStatusClass, formatDateRelative } from '../utils/DateUtils';
-import { getColumnTypeLabel, getColumnTypeIcon } from '../utils/ColumnTypeUtils';
+import { getColumnTypeLabel } from '../utils/ColumnTypeUtils';
 
 export const VIEW_TYPE_BOARD = 'taskweaver-board-view';
 
@@ -58,6 +59,7 @@ export class BoardView extends ItemView {
         contentEl.addClass('taskweaver-board-container');
 
         this.containerEl_ = contentEl;
+        await Promise.resolve(); // Satisfy async requirement
         this.render();
 
         // Subscribe to updates
@@ -127,7 +129,7 @@ export class BoardView extends ItemView {
         // Settings button
         const settingsBtn = header.createEl('button', { cls: 'taskweaver-settings-btn' });
         setIcon(settingsBtn, 'settings');
-        settingsBtn.setAttribute('aria-label', 'Board Settings');
+        settingsBtn.setAttribute('aria-label', 'Board settings');
 
         const board = this.boardEngine.getActiveBoard();
         if (board) {
@@ -166,7 +168,7 @@ export class BoardView extends ItemView {
 
         // Add column button
         const addColumnBtn = columnsEl.createDiv({ cls: 'taskweaver-board-add-column' });
-        addColumnBtn.setText('+ Add Column');
+        addColumnBtn.setText('+ Add column');
         addColumnBtn.addEventListener('click', () => this.promptAddColumn(board.id));
     }
 
@@ -212,10 +214,15 @@ export class BoardView extends ItemView {
             deleteBtn.setText('🗑');
             deleteBtn.setAttribute('title', 'Delete board');
             deleteBtn.addEventListener('click', () => {
-                if (confirm(`Delete board "${activeBoard.name}"?`)) {
-                    this.boardEngine.deleteBoard(activeBoard.id);
-                    this.onSettingsChange();
-                }
+                new ConfirmModal(
+                    this.app,
+                    'Delete board',
+                    `Are you sure you want to delete board "${activeBoard.name}"?`,
+                    () => {
+                        this.boardEngine.deleteBoard(activeBoard.id);
+                        this.onSettingsChange();
+                    }
+                ).open();
             });
         }
     }
@@ -289,7 +296,7 @@ export class BoardView extends ItemView {
 
         // Title with count
         const titleEl = headerEl.createSpan({ text: column.name, cls: 'taskweaver-column-title' });
-        const countEl = headerEl.createSpan({
+        headerEl.createSpan({
             text: `(${todoCount}${column.workLimit ? '/' + column.workLimit : ''})`,
             cls: 'taskweaver-column-count'
         });
@@ -441,7 +448,7 @@ export class BoardView extends ItemView {
             }
         });
 
-        const count = headerEl.createSpan({ text: ` (${todos.length})`, cls: 'taskweaver-column-count' });
+        headerEl.createSpan({ text: ` (${todos.length})`, cls: 'taskweaver-column-count' });
 
         for (const todo of todos) {
             this.renderTodoCard(todosEl, board, todo);
@@ -634,15 +641,20 @@ export class BoardView extends ItemView {
 
         // Clear all button
         const clearBtn = header.createEl('button', { cls: 'taskweaver-archive-clear-btn' });
-        clearBtn.setText('Clear All');
+        clearBtn.setText('Clear all');
         clearBtn.setAttribute('title', 'Remove all archived items');
         clearBtn.addEventListener('click', () => {
-            if (confirm('Remove all archived tasks from this board?')) {
-                for (const todo of archivedTodos) {
-                    this.boardEngine.unarchiveTodo(board.id, todo.id);
+            new ConfirmModal(
+                this.app,
+                'Clear archive',
+                'Remove all archived tasks from this board?',
+                () => {
+                    for (const todo of archivedTodos) {
+                        this.boardEngine.unarchiveTodo(board.id, todo.id);
+                    }
+                    this.onSettingsChange();
                 }
-                this.onSettingsChange();
-            }
+            ).open();
         });
 
         // Archived items list
@@ -858,7 +870,7 @@ export class BoardView extends ItemView {
             await leaf.openFile(file);
             const view = leaf.view;
             if (view.getViewType() === 'markdown') {
-                const editor = (view as any).editor;
+                const editor = (view as unknown as { editor?: { setCursor: (pos: { line: number; ch: number }) => void; scrollIntoView: (range: { from: { line: number; ch: number }; to: { line: number; ch: number } }, center: boolean) => void } }).editor;
                 if (editor) {
                     const line = todo.lineNumber - 1;
                     editor.setCursor({ line, ch: 0 });
